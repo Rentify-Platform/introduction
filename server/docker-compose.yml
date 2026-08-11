@@ -1,0 +1,62 @@
+services:
+   postgres:
+      image: postgres:18.3-alpine
+      container_name: rentify-postgres
+      restart: unless-stopped
+      environment:
+         POSTGRES_DB: rentify
+         POSTGRES_USER: rentify
+         POSTGRES_PASSWORD: rentify
+      ports:
+         - '5432:5432'
+      volumes:
+         - rentify_pg_data:/var/lib/postgresql/data
+      healthcheck:
+         test: ['CMD-SHELL', 'pg_isready -U rentify -d rentify']
+         interval: 10s
+         timeout: 5s
+         retries: 5
+
+   redis:
+      image: redis:7-alpine
+      container_name: rentify-redis
+      restart: unless-stopped
+      command: ['redis-server', '--appendonly', 'yes']
+      ports:
+         - '6379:6379'
+      volumes:
+         - rentify_redis_data:/data
+      healthcheck:
+         test: ['CMD', 'redis-cli', 'ping']
+         interval: 10s
+         timeout: 5s
+         retries: 5
+
+   meilisearch:
+      image: getmeili/meilisearch:v1.9
+      container_name: rentify-meilisearch
+      restart: unless-stopped
+      environment:
+         - MEILI_ENV=development
+         - MEILI_MASTER_KEY=rentify_master_key_123456
+      ports:
+         - '7700:7700'
+      volumes:
+         - rentify_meili_data:/meili_data
+
+   ngrok:
+      image: ngrok/ngrok:alpine
+      container_name: rentify-ngrok
+      restart: unless-stopped
+      command:
+         - "http"
+         - "host.docker.internal:8080"
+      environment:
+         - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+      extra_hosts:
+         - "host.docker.internal:host-gateway"
+
+volumes:
+   rentify_pg_data:
+   rentify_redis_data:
+   rentify_meili_data:

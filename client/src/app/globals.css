@@ -1,0 +1,575 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+   --color-background: var(--background);
+   --color-foreground: var(--foreground);
+   --font-sans: var(--font-sans);
+   --font-mono: var(--font-geist-mono);
+   --font-heading: var(--font-sans);
+   --color-sidebar-ring: var(--sidebar-ring);
+   --color-sidebar-border: var(--sidebar-border);
+   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+   --color-sidebar-accent: var(--sidebar-accent);
+   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+   --color-sidebar-primary: var(--sidebar-primary);
+   --color-sidebar-foreground: var(--sidebar-foreground);
+   --color-sidebar: var(--sidebar);
+   --color-chart-5: var(--chart-5);
+   --color-chart-4: var(--chart-4);
+   --color-chart-3: var(--chart-3);
+   --color-chart-2: var(--chart-2);
+   --color-chart-1: var(--chart-1);
+   --color-ring: var(--ring);
+   --color-input: var(--input);
+   --color-border: var(--border);
+   --color-destructive: var(--destructive);
+   --color-accent-foreground: var(--accent-foreground);
+   --color-accent: var(--accent);
+   --color-muted-foreground: var(--muted-foreground);
+   --color-muted: var(--muted);
+   --color-secondary-foreground: var(--secondary-foreground);
+   --color-secondary: var(--secondary);
+   --color-primary-foreground: var(--primary-foreground);
+   --color-primary: var(--primary);
+   --color-popover-foreground: var(--popover-foreground);
+   --color-popover: var(--popover);
+   --color-card-foreground: var(--card-foreground);
+   --color-card: var(--card);
+
+   /* Airbnb custom border radius extensions */
+   --radius-sm: var(--radius-sm-custom);
+   --radius-md: var(--radius-md-custom);
+   --radius-lg: var(--radius-lg-custom);
+   --radius-xl: var(--radius-xl-custom);
+   --radius-full: var(--radius-full-custom);
+
+   /* Airbnb custom color tokens */
+   --color-primary-active: var(--primary-active);
+   --color-primary-disabled: var(--primary-disabled);
+   --color-primary-error-text: var(--primary-error-text);
+   --color-primary-error-text-hover: var(--primary-error-text-hover);
+   --color-luxe: var(--luxe);
+   --color-plus: var(--plus);
+   --color-ink: var(--ink);
+   --color-body: var(--body);
+   --color-muted-soft: var(--muted-soft);
+   --color-hairline: var(--hairline);
+   --color-hairline-soft: var(--hairline-soft);
+   --color-border-strong: var(--border-strong);
+   --color-canvas: var(--canvas);
+   --color-surface-soft: var(--surface-soft);
+   --color-surface-card: var(--surface-card);
+   --color-surface-strong: var(--surface-strong);
+   --color-on-primary: var(--on-primary);
+   --color-on-dark: var(--on-dark);
+   --color-legal-link: var(--legal-link);
+   --color-star-rating: var(--star-rating);
+   --color-scrim: var(--scrim);
+
+   /* Custom Shadow Tier - Airbnb style shadow */
+   --shadow-airbnb:
+      rgba(0, 0, 0, 0.02) 0px 0px 0px 1px, rgba(0, 0, 0, 0.04) 0px 2px 6px 0px,
+      rgba(0, 0, 0, 0.1) 0px 4px 8px 0px;
+   --shadow-md:
+      rgba(0, 0, 0, 0.02) 0px 0px 0px 1px, rgba(0, 0, 0, 0.04) 0px 2px 6px 0px,
+      rgba(0, 0, 0, 0.1) 0px 4px 8px 0px;
+}
+
+:root {
+   /* Base theme config overrides for Airbnb style */
+   --background: #ffffff;
+   --foreground: #222222;
+   --card: #ffffff;
+   --card-foreground: #222222;
+   --popover: #ffffff;
+   --popover-foreground: #222222;
+   --primary: #ff385c;
+   --primary-foreground: #ffffff;
+   --secondary: #ffffff;
+   --secondary-foreground: #222222;
+   --muted: #f7f7f7;
+   --muted-foreground: #6a6a6a;
+   --accent: #f7f7f7;
+   --accent-foreground: #222222;
+   --destructive: #c13515;
+   --destructive-foreground: #ffffff;
+   --border: #dddddd;
+   --input: #dddddd;
+   --ring: #222222;
+
+   /* Font definitions */
+   --font-sans:
+      'Airbnb Cereal VF', Circular, var(--font-geist-sans), -apple-system, system-ui, Roboto,
+      'Helvetica Neue', sans-serif;
+
+   /* Custom radii values corresponding to Airbnb design */
+   --radius-none-custom: 0px;
+   --radius-xs-custom: 4px;
+   --radius-sm-custom: 8px;
+   --radius-md-custom: 14px;
+   --radius-lg-custom: 20px;
+   --radius-xl-custom: 32px;
+   --radius-full-custom: 9999px;
+   --radius: 8px; /* default */
+
+   /* Airbnb specific design system variables */
+   --primary-active: #e00b41;
+   --primary-disabled: #ffd1da;
+   --primary-error-text: #c13515;
+   --primary-error-text-hover: #b32505;
+   --luxe: #460479;
+   --plus: #92174d;
+   --ink: #222222;
+   --body: #3f3f3f;
+   --muted-soft: #929292;
+   --hairline: #dddddd;
+   --hairline-soft: #ebebeb;
+   --border-strong: #c1c1c1;
+   --canvas: #ffffff;
+   --surface-soft: #f7f7f7;
+   --surface-card: #ffffff;
+   --surface-strong: #f2f2f2;
+   --on-primary: #ffffff;
+   --on-dark: #ffffff;
+   --legal-link: #428bff;
+   --star-rating: #222222;
+   --scrim: rgba(0, 0, 0, 0.5);
+}
+
+.dark {
+   --background: #121212;
+   --foreground: #f7f7f7;
+   --card: #1e1e1e;
+   --card-foreground: #f7f7f7;
+   --popover: #1e1e1e;
+   --popover-foreground: #f7f7f7;
+   --primary: #ff385c;
+   --primary-foreground: #ffffff;
+   --secondary: #2c2c2c;
+   --secondary-foreground: #f7f7f7;
+   --muted: #1e1e1e;
+   --muted-foreground: #929292;
+   --accent: #2c2c2c;
+   --accent-foreground: #f7f7f7;
+   --destructive: #e00b41;
+   --destructive-foreground: #ffffff;
+   --border: #2c2c2c;
+   --input: #2c2c2c;
+   --ring: #ff385c;
+
+   /* Dark variant overrides for Airbnb custom tokens */
+   --primary-active: #e00b41;
+   --primary-disabled: #ffd1da;
+   --primary-error-text: #e00b41;
+   --primary-error-text-hover: #ff385c;
+   --luxe: #9b51e0;
+   --plus: #d53f8c;
+   --ink: #f7f7f7;
+   --body: #e0e0e0;
+   --muted-soft: #6a6a6a;
+   --hairline: #2c2c2c;
+   --hairline-soft: #1e1e1e;
+   --border-strong: #4a4a4a;
+   --canvas: #121212;
+   --surface-soft: #1e1e1e;
+   --surface-card: #1e1e1e;
+   --surface-strong: #2c2c2c;
+   --on-primary: #ffffff;
+   --on-dark: #ffffff;
+   --legal-link: #428bff;
+   --star-rating: #f7f7f7;
+   --scrim: rgba(0, 0, 0, 0.7);
+}
+
+@layer base {
+   * {
+      @apply border-border outline-ring/50;
+   }
+   body {
+      @apply bg-background text-foreground font-sans antialiased;
+   }
+}
+
+@layer utilities {
+   /* Airbnb component classes for reusability */
+   .btn-primary {
+      background-color: var(--primary);
+      color: var(--on-primary);
+      font-weight: 500;
+      border-radius: var(--radius-sm-custom);
+      padding: 14px 24px;
+      height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition:
+         background-color 0.2s ease,
+         opacity 0.2s ease;
+      font-size: 16px;
+      line-height: 1.25;
+      border: 1px solid transparent;
+   }
+
+   .btn-primary:active {
+      background-color: var(--primary-active);
+   }
+
+   .btn-primary:disabled {
+      background-color: var(--primary-disabled);
+      cursor: not-allowed;
+   }
+
+   .btn-secondary {
+      background-color: var(--canvas);
+      color: var(--ink);
+      font-weight: 500;
+      border-radius: var(--radius-sm-custom);
+      padding: 13px 23px;
+      height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--ink);
+      transition: background-color 0.2s ease;
+      font-size: 16px;
+      line-height: 1.25;
+   }
+
+   .btn-secondary:hover {
+      background-color: var(--surface-soft);
+   }
+
+   .btn-tertiary-text {
+      background-color: transparent;
+      color: var(--ink);
+      font-weight: 500;
+      font-size: 16px;
+      line-height: 1.25;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+   }
+
+   .btn-tertiary-text:hover {
+      text-decoration: underline;
+   }
+
+   .btn-pill-rausch {
+      background-color: var(--primary);
+      color: var(--on-primary);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.29;
+      border-radius: var(--radius-full-custom);
+      padding: 10px 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s ease;
+   }
+
+   .btn-pill-rausch:active {
+      background-color: var(--primary-active);
+   }
+
+   /* Search elements */
+   .search-bar-pill {
+      background-color: var(--canvas);
+      border: 1px solid var(--hairline);
+      box-shadow:
+         rgba(0, 0, 0, 0.02) 0px 0px 0px 1px,
+         rgba(0, 0, 0, 0.04) 0px 2px 6px 0px,
+         rgba(0, 0, 0, 0.1) 0px 4px 8px 0px;
+      border-radius: var(--radius-full-custom);
+      height: 64px;
+      display: flex;
+      align-items: center;
+      padding: 8px 8px 8px 24px;
+      width: 100%;
+      max-width: 850px;
+      margin: 0 auto;
+   }
+
+   .search-field-segment {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 16px;
+      height: 100%;
+      border-right: 1px solid var(--hairline);
+      cursor: pointer;
+   }
+
+   .search-field-segment:last-of-type {
+      border-right: none;
+   }
+
+   .search-field-label {
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.33;
+      color: var(--ink);
+   }
+
+   .search-field-value {
+      font-size: 14px;
+      color: var(--muted-foreground);
+      line-height: 1.43;
+   }
+
+   .search-orb {
+      background-color: var(--primary);
+      color: var(--on-primary);
+      border-radius: var(--radius-full-custom);
+      height: 48px;
+      width: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background-color 0.2s ease;
+      cursor: pointer;
+   }
+
+   .search-orb:active {
+      background-color: var(--primary-active);
+   }
+
+   /* Cards & badges */
+   .property-card {
+      background-color: var(--canvas);
+      color: var(--ink);
+      border-radius: var(--radius-md-custom);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: box-shadow 0.2s ease;
+   }
+
+   .property-card:hover {
+      box-shadow:
+         rgba(0, 0, 0, 0.02) 0px 0px 0px 1px,
+         rgba(0, 0, 0, 0.04) 0px 2px 6px 0px,
+         rgba(0, 0, 0, 0.1) 0px 4px 8px 0px;
+   }
+
+   .property-card-photo {
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      object-fit: cover;
+      border-radius: var(--radius-md-custom);
+   }
+
+   .guest-favorite-badge {
+      background-color: var(--canvas);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.18;
+      border-radius: var(--radius-full-custom);
+      padding: 4px 10px;
+      box-shadow:
+         rgba(0, 0, 0, 0.02) 0px 0px 0px 1px,
+         rgba(0, 0, 0, 0.04) 0px 2px 6px 0px,
+         rgba(0, 0, 0, 0.1) 0px 4px 8px 0px;
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+   }
+
+   .new-tag {
+      background-color: var(--canvas);
+      color: var(--ink);
+      font-size: 8px;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: 0.32px;
+      text-transform: uppercase;
+      border-radius: var(--radius-full-custom);
+      padding: 2px 6px;
+      display: inline-block;
+   }
+
+   .rating-display-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 24px;
+      background-color: transparent;
+      color: var(--ink);
+   }
+
+   .rating-display-number {
+      font-size: 64px;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+   }
+
+   .reservation-card {
+      background-color: var(--canvas);
+      color: var(--ink);
+      border-radius: var(--radius-md-custom);
+      border: 1px solid var(--hairline);
+      box-shadow:
+         rgba(0, 0, 0, 0.02) 0px 0px 0px 1px,
+         rgba(0, 0, 0, 0.04) 0px 2px 6px 0px,
+         rgba(0, 0, 0, 0.1) 0px 4px 8px 0px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+   }
+
+   /* Form inputs */
+   .airbnb-input {
+      background-color: var(--canvas);
+      color: var(--ink);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-sm-custom);
+      height: 56px;
+      padding: 14px 12px;
+      font-size: 16px;
+      width: 100%;
+      transition: border 0.1s ease;
+   }
+
+   .airbnb-input:focus {
+      outline: none;
+      border: 2px solid var(--ink);
+      padding: 13px 11px;
+   }
+
+   /* Airbnb Typography Helper Classes */
+   .text-rating-display {
+      font-size: 64px;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -1px;
+   }
+   .text-display-xl {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.43;
+   }
+   .text-display-lg {
+      font-size: 22px;
+      font-weight: 500;
+      line-height: 1.18;
+      letter-spacing: -0.44px;
+   }
+   .text-display-md {
+      font-size: 21px;
+      font-weight: 700;
+      line-height: 1.43;
+   }
+   .text-display-sm {
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: -0.18px;
+   }
+   .text-title-md {
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.25;
+   }
+   .text-title-sm {
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.25;
+   }
+   .text-body-md {
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.5;
+   }
+   .text-body-sm {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.43;
+   }
+   .text-caption {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.29;
+   }
+   .text-caption-sm {
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 1.23;
+   }
+   .text-badge {
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.18;
+   }
+   .text-micro-label {
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.33;
+   }
+   .text-uppercase-tag {
+      font-size: 8px;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: 0.32px;
+      text-transform: uppercase;
+   }
+   .text-button-md {
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.25;
+   }
+   .text-button-sm {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.29;
+   }
+   .text-link {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.43;
+   }
+   .text-nav-link {
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.25;
+   }
+}
+
+/* Custom Mapbox Popup overrides */
+.mapboxgl-popup-content {
+   padding: 0 !important;
+   border-radius: var(--radius-md-custom) !important;
+   overflow: hidden;
+   box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 16px !important;
+   border: 1px solid var(--border) !important;
+   background: var(--card) !important;
+}
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+   border-bottom-color: var(--border) !important;
+}
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+   border-top-color: var(--border) !important;
+}
+.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+   border-right-color: var(--border) !important;
+}
+.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+   border-left-color: var(--border) !important;
+}

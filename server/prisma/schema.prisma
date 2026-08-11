@@ -1,0 +1,628 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model accounts {
+  id                                                            String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  email                                                         String                @unique @db.Citext
+  phone                                                         String?               @unique
+  password_hash                                                 String?
+  role                                                          account_role          @default(guest)
+  status                                                        account_status        @default(active)
+  email_verified_at                                             DateTime?             @db.Timestamptz(6)
+  phone_verified_at                                             DateTime?             @db.Timestamptz(6)
+  last_login_at                                                 DateTime?             @db.Timestamptz(6)
+  created_at                                                    DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at                                                    DateTime              @default(now()) @db.Timestamptz(6)
+  deleted_at                                                    DateTime?             @db.Timestamptz(6)
+  bookings_bookings_guest_idToaccounts                          bookings[]            @relation("bookings_guest_idToaccounts")
+  bookings_bookings_host_idToaccounts                           bookings[]            @relation("bookings_host_idToaccounts")
+  cancellations_cancellations_cancelled_by_account_idToaccounts cancellations[]       @relation("cancellations_cancelled_by_account_idToaccounts")
+  cancellations_cancellations_override_by_admin_idToaccounts    cancellations[]       @relation("cancellations_override_by_admin_idToaccounts")
+  host_penalties                                                host_penalties[]
+  host_profiles                                                 host_profiles?
+  kyc_checks                                                    kyc_checks[]
+  kyc_documents_kyc_documents_account_idToaccounts              kyc_documents[]       @relation("kyc_documents_account_idToaccounts")
+  kyc_documents_kyc_documents_reviewed_byToaccounts             kyc_documents[]       @relation("kyc_documents_reviewed_byToaccounts")
+  ledger_accounts                                               ledger_accounts[]
+  ledger_transactions                                           ledger_transactions[]
+  payment_methods                                               payment_methods[]
+  payouts                                                       payouts[]
+  profiles                                                      profiles?
+  properties                                                    properties[]
+  reviews_reviews_author_idToaccounts                           reviews[]             @relation("reviews_author_idToaccounts")
+  reviews_reviews_target_idToaccounts                           reviews[]             @relation("reviews_target_idToaccounts")
+  wishlists                                                     wishlists[]
+}
+
+model amenities {
+  id                 Int                  @id @default(autoincrement()) @db.SmallInt
+  code               String               @unique
+  label              String
+  category           String?
+  property_amenities property_amenities[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+model bookings {
+  id                                   String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  property_id                          String                    @db.Uuid
+  guest_id                             String                    @db.Uuid
+  host_id                              String                    @db.Uuid
+  status                               booking_status            @default(pending)
+  check_in                             DateTime                  @db.Date
+  check_out                            DateTime                  @db.Date
+  stay_range                           Unsupported("daterange")? @default(dbgenerated("daterange(check_in, check_out, '[)'::text)"))
+  guests_count                         Int                       @db.SmallInt
+  nightly_rate_cents                   BigInt
+  nights                               Int                       @default(dbgenerated("(check_out - check_in)"))
+  cleaning_fee_cents                   BigInt                    @default(0)
+  service_fee_cents                    BigInt                    @default(0)
+  taxes_cents                          BigInt                    @default(0)
+  total_price_cents                    BigInt
+  currency                             String                    @default("VND") @db.Char(3)
+  cancellation_policy_code             String
+  booked_at                            DateTime                  @default(now()) @db.Timestamptz(6)
+  cancelled_at                         DateTime?                 @db.Timestamptz(6)
+  created_at                           DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at                           DateTime                  @default(now()) @db.Timestamptz(6)
+  cancellation_policies                cancellation_policies     @relation(fields: [cancellation_policy_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  accounts_bookings_guest_idToaccounts accounts                  @relation("bookings_guest_idToaccounts", fields: [guest_id], references: [id], onUpdate: NoAction)
+  accounts_bookings_host_idToaccounts  accounts                  @relation("bookings_host_idToaccounts", fields: [host_id], references: [id], onUpdate: NoAction)
+  properties                           properties                @relation(fields: [property_id], references: [id], onUpdate: NoAction)
+  cancellations                        cancellations[]
+  host_penalties                       host_penalties[]
+  ledger_transactions                  ledger_transactions[]
+  payments                             payments[]
+  reviews                              reviews[]
+
+  @@index([guest_id, created_at(sort: Desc)], map: "idx_bookings_guest")
+  @@index([host_id, created_at(sort: Desc)], map: "idx_bookings_host")
+  @@index([property_id, check_in, check_out], map: "idx_bookings_property_dates")
+}
+
+model cancellation_policies {
+  code                                String                      @id
+  label                               String
+  free_cancel_grace_hours             Int                         @default(24)
+  free_cancel_min_days_before_checkin Int                         @default(7)
+  active                              Boolean                     @default(true)
+  effective_from                      DateTime                    @default(dbgenerated("CURRENT_DATE")) @db.Date
+  created_at                          DateTime                    @default(now()) @db.Timestamptz(6)
+  bookings                            bookings[]
+  cancellation_policy_tiers           cancellation_policy_tiers[]
+  cancellations                       cancellations[]
+  properties                          properties[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model cancellation_policy_tiers {
+  id                      BigInt                @id @default(autoincrement())
+  policy_code             String
+  applies_after_checkin   Boolean               @default(false)
+  min_days_before_checkin Int
+  guest_refund_pct        Decimal               @db.Decimal(5, 2)
+  host_payout_pct         Decimal               @db.Decimal(5, 2)
+  host_extra_nights       Decimal               @default(0) @db.Decimal(4, 1)
+  refund_cleaning_fee     Boolean               @default(true)
+  refund_service_fee      Boolean               @default(false)
+  refund_taxes_pct        Decimal               @default(100) @db.Decimal(5, 2)
+  cancellation_policies   cancellation_policies @relation(fields: [policy_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  cancellations           cancellations[]
+
+  @@unique([policy_code, applies_after_checkin, min_days_before_checkin])
+  @@index([policy_code, applies_after_checkin, min_days_before_checkin(sort: Desc)], map: "idx_policy_tiers_lookup")
+}
+
+model cancellations {
+  id                                                       String                     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  booking_id                                               String                     @db.Uuid
+  cancelled_by_account_id                                  String?                    @db.Uuid
+  cancelled_by_role                                        cancelled_by_role
+  reason_code                                              String?
+  reason_text                                              String?
+  days_before_checkin                                      Int
+  applied_policy_code                                      String
+  applied_tier_id                                          BigInt?
+  guest_refund_cents                                       BigInt
+  host_payout_cents                                        BigInt
+  platform_fee_kept_cents                                  BigInt                     @default(0)
+  override_reason                                          String?
+  override_by_admin_id                                     String?                    @db.Uuid
+  ledger_transaction_id                                    String?                    @db.Uuid
+  created_at                                               DateTime                   @default(now()) @db.Timestamptz(6)
+  cancellation_policies                                    cancellation_policies      @relation(fields: [applied_policy_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  cancellation_policy_tiers                                cancellation_policy_tiers? @relation(fields: [applied_tier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  bookings                                                 bookings                   @relation(fields: [booking_id], references: [id], onUpdate: NoAction)
+  accounts_cancellations_cancelled_by_account_idToaccounts accounts?                  @relation("cancellations_cancelled_by_account_idToaccounts", fields: [cancelled_by_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ledger_transactions                                      ledger_transactions?       @relation(fields: [ledger_transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  accounts_cancellations_override_by_admin_idToaccounts    accounts?                  @relation("cancellations_override_by_admin_idToaccounts", fields: [override_by_admin_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([booking_id], map: "idx_cancellations_booking")
+}
+
+model host_penalties {
+  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  host_id      String    @db.Uuid
+  booking_id   String?   @db.Uuid
+  penalty_type String
+  amount_cents BigInt    @default(0)
+  notes        String?
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  bookings     bookings? @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  accounts     accounts  @relation(fields: [host_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model host_profiles {
+  account_id              String     @id @db.Uuid
+  about                   String?
+  is_superhost            Boolean    @default(false)
+  response_rate_pct       Int?       @db.SmallInt
+  avg_response_minutes    Int?
+  kyc_status              kyc_status @default(unverified)
+  tax_country             String?    @db.Char(2)
+  tax_id_enc              Bytes?
+  tax_form_type           String?
+  tax_verified            Boolean    @default(false)
+  payout_provider         String?
+  payout_account_id       String?
+  payout_account_verified Boolean    @default(false)
+  became_host_at          DateTime   @default(now()) @db.Timestamptz(6)
+  created_at              DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime   @default(now()) @db.Timestamptz(6)
+  accounts                accounts   @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model kyc_checks {
+  id                    String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  account_id            String           @db.Uuid
+  check_type            kyc_check_type
+  related_document_id   String?          @db.Uuid
+  provider              String
+  provider_reference_id String?
+  result                kyc_check_result
+  score                 Decimal?         @db.Decimal(5, 2)
+  raw_response          Json?
+  expires_at            DateTime?        @db.Timestamptz(6)
+  created_at            DateTime         @default(now()) @db.Timestamptz(6)
+  accounts              accounts         @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  kyc_documents         kyc_documents?   @relation(fields: [related_document_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([account_id, check_type, created_at(sort: Desc)], map: "idx_kyc_checks_account")
+}
+
+model kyc_documents {
+  id                                           String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  account_id                                   String         @db.Uuid
+  doc_type                                     kyc_doc_type
+  country_code                                 String?        @db.Char(2)
+  document_number_enc                          Bytes?
+  file_url_front                               String
+  file_url_back                                String?
+  issue_date                                   DateTime?      @db.Date
+  expiry_date                                  DateTime?      @db.Date
+  status                                       kyc_doc_status @default(pending)
+  rejection_reason                             String?
+  reviewed_by                                  String?        @db.Uuid
+  reviewed_at                                  DateTime?      @db.Timestamptz(6)
+  created_at                                   DateTime       @default(now()) @db.Timestamptz(6)
+  kyc_checks                                   kyc_checks[]
+  accounts_kyc_documents_account_idToaccounts  accounts       @relation("kyc_documents_account_idToaccounts", fields: [account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  accounts_kyc_documents_reviewed_byToaccounts accounts?      @relation("kyc_documents_reviewed_byToaccounts", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([account_id, doc_type], map: "idx_kyc_documents_account")
+}
+
+model ledger_accounts {
+  id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  owner_type       ledger_owner_type
+  owner_account_id String?           @db.Uuid
+  account_subtype  String
+  currency         String            @db.Char(3)
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  accounts         accounts?         @relation(fields: [owner_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ledger_balances  ledger_balances?
+  ledger_entries   ledger_entries[]
+
+  @@unique([owner_type, owner_account_id, account_subtype, currency])
+  @@unique([owner_type, account_subtype, currency], map: "uq_ledger_accounts_ownerless_singleton", where: raw("(owner_account_id IS NULL)"))
+}
+
+model ledger_balances {
+  ledger_account_id String          @id @db.Uuid
+  balance_cents     BigInt          @default(0)
+  updated_at        DateTime        @default(now()) @db.Timestamptz(6)
+  ledger_accounts   ledger_accounts @relation(fields: [ledger_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model ledger_entries {
+  id                  BigInt              @id @default(autoincrement())
+  transaction_id      String              @db.Uuid
+  ledger_account_id   String              @db.Uuid
+  amount_cents        BigInt
+  currency            String              @db.Char(3)
+  created_at          DateTime            @default(now()) @db.Timestamptz(6)
+  ledger_accounts     ledger_accounts     @relation(fields: [ledger_account_id], references: [id], onUpdate: NoAction)
+  ledger_transactions ledger_transactions @relation(fields: [transaction_id], references: [id], onUpdate: NoAction)
+
+  @@index([ledger_account_id, created_at], map: "idx_ledger_entries_account")
+  @@index([transaction_id], map: "idx_ledger_entries_txn")
+}
+
+model ledger_transactions {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  idempotency_key String           @unique
+  type            ledger_txn_type
+  booking_id      String?          @db.Uuid
+  description     String?
+  metadata        Json?
+  created_by      String?          @db.Uuid
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  cancellations   cancellations[]
+  ledger_entries  ledger_entries[]
+  bookings        bookings?        @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  accounts        accounts?        @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments        payments[]
+  payouts         payouts[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payment_methods {
+  id             String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  account_id     String     @db.Uuid
+  provider       String
+  provider_pm_id String
+  brand          String?
+  last4          String?    @db.Char(4)
+  exp_month      Int?       @db.SmallInt
+  exp_year       Int?       @db.SmallInt
+  is_default     Boolean    @default(false)
+  created_at     DateTime   @default(now()) @db.Timestamptz(6)
+  accounts       accounts   @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  payments       payments[]
+
+  @@unique([provider, provider_pm_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payments {
+  id                    String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  booking_id            String               @db.Uuid
+  payment_method_id     String?              @db.Uuid
+  ledger_transaction_id String?              @db.Uuid
+  status                payment_status       @default(pending)
+  amount_cents          BigInt
+  currency              String               @db.Char(3)
+  provider              String
+  provider_intent_id    String?
+  failure_reason        String?
+  created_at            DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime             @default(now()) @db.Timestamptz(6)
+  bookings              bookings             @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ledger_transactions   ledger_transactions? @relation(fields: [ledger_transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment_methods       payment_methods?     @relation(fields: [payment_method_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([provider, provider_intent_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payouts {
+  id                    String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  host_id               String              @db.Uuid
+  ledger_transaction_id String              @db.Uuid
+  amount_cents          BigInt
+  currency              String              @db.Char(3)
+  status                payout_status       @default(pending)
+  scheduled_for         DateTime            @db.Date
+  paid_at               DateTime?           @db.Timestamptz(6)
+  provider_payout_id    String?
+  created_at            DateTime            @default(now()) @db.Timestamptz(6)
+  accounts              accounts            @relation(fields: [host_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ledger_transactions   ledger_transactions @relation(fields: [ledger_transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([host_id, status], map: "idx_payouts_host_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model platform_config {
+  singleton  Boolean  @id @default(true)
+  fee_rules  Json     @default("{}")
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model profiles {
+  account_id       String     @id @db.Uuid
+  first_name       String
+  last_name        String
+  date_of_birth    DateTime?  @db.Date
+  avatar_url       String?
+  bio              String?
+  locale           String     @default("en")
+  timezone         String     @default("UTC")
+  guest_kyc_status kyc_status @default(unverified)
+  created_at       DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime   @default(now()) @db.Timestamptz(6)
+  accounts         accounts   @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model properties {
+  id                       String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  host_id                  String                @db.Uuid
+  property_type_id         Int                   @db.SmallInt
+  room_type                room_type
+  status                   property_status       @default(draft)
+  title                    String
+  description              String?
+  address_line1            String
+  address_line2            String?
+  city                     String
+  state_province           String?
+  country_code             String                @db.Char(2)
+  postal_code              String?
+  latitude                 Decimal               @db.Decimal(9, 6)
+  longitude                Decimal               @db.Decimal(9, 6)
+  max_guests               Int                   @db.SmallInt
+  bedrooms                 Int                   @default(0) @db.SmallInt
+  beds                     Int                   @default(0) @db.SmallInt
+  bathrooms                Decimal               @default(0) @db.Decimal(3, 1)
+  base_price_cents         BigInt
+  cleaning_fee_cents       BigInt                @default(0)
+  currency                 String                @default("VND") @db.Char(3)
+  minimum_nights           Int                   @default(1) @db.SmallInt
+  maximum_nights           Int                   @default(365) @db.SmallInt
+  check_in_time            DateTime              @default(dbgenerated("'15:00:00'::time without time zone")) @db.Time(6)
+  check_out_time           DateTime              @default(dbgenerated("'11:00:00'::time without time zone")) @db.Time(6)
+  instant_book             Boolean               @default(false)
+  cancellation_policy_code String                @default("moderate")
+  requires_local_license   Boolean               @default(false)
+  created_at               DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime              @default(now()) @db.Timestamptz(6)
+  published_at             DateTime?             @db.Timestamptz(6)
+  deleted_at               DateTime?             @db.Timestamptz(6)
+  bookings                 bookings[]
+  cancellation_policies    cancellation_policies @relation(fields: [cancellation_policy_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  accounts                 accounts              @relation(fields: [host_id], references: [id], onUpdate: NoAction)
+  property_types           property_types        @relation(fields: [property_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  property_amenities       property_amenities[]
+  property_calendar        property_calendar[]
+  property_licenses        property_licenses[]
+  property_photos          property_photos[]
+  wishlist_items           wishlist_items[]
+
+  @@index([host_id], map: "idx_properties_host", where: raw("(deleted_at IS NULL)"))
+  @@index([latitude, longitude], map: "idx_properties_lat_lng")
+  @@index([status], map: "idx_properties_status_active", where: raw("((status = 'active'::property_status) AND (deleted_at IS NULL))"))
+}
+
+model property_amenities {
+  property_id String     @db.Uuid
+  amenity_id  Int        @db.SmallInt
+  amenities   amenities  @relation(fields: [amenity_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  properties  properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([property_id, amenity_id])
+}
+
+model property_calendar {
+  property_id  String     @db.Uuid
+  date         DateTime   @db.Date
+  is_available Boolean    @default(true)
+  price_cents  BigInt?
+  min_stay     Int?       @db.SmallInt
+  properties   properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([property_id, date])
+}
+
+model property_licenses {
+  id                String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  property_id       String         @db.Uuid
+  license_number    String?
+  issuing_authority String?
+  file_url          String?
+  expiry_date       DateTime?      @db.Date
+  status            kyc_doc_status @default(pending)
+  verified_at       DateTime?      @db.Timestamptz(6)
+  created_at        DateTime       @default(now()) @db.Timestamptz(6)
+  properties        properties     @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model property_photos {
+  id          String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  property_id String     @db.Uuid
+  url         String
+  caption     String?
+  position    Int        @default(0) @db.SmallInt
+  properties  properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([property_id, position])
+}
+
+model property_types {
+  id         Int          @id @default(autoincrement()) @db.SmallInt
+  code       String       @unique
+  label      String
+  properties properties[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reviews {
+  id                                   String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  booking_id                           String      @db.Uuid
+  type                                 review_type
+  author_id                            String      @db.Uuid
+  target_id                            String      @db.Uuid
+  rating                               Int         @db.SmallInt
+  comment                              String?
+  host_response                        String?
+  created_at                           DateTime    @default(now()) @db.Timestamptz(6)
+  accounts_reviews_author_idToaccounts accounts    @relation("reviews_author_idToaccounts", fields: [author_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  bookings                             bookings    @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  accounts_reviews_target_idToaccounts accounts    @relation("reviews_target_idToaccounts", fields: [target_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([booking_id, type])
+}
+
+model wishlist_items {
+  wishlist_id String     @db.Uuid
+  property_id String     @db.Uuid
+  properties  properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wishlists   wishlists  @relation(fields: [wishlist_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([wishlist_id, property_id])
+}
+
+model wishlists {
+  id             String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  account_id     String           @db.Uuid
+  name           String           @default("My wishlist")
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  wishlist_items wishlist_items[]
+  accounts       accounts         @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+enum account_role {
+  guest
+  host
+  admin
+}
+
+enum account_status {
+  active
+  suspended
+  banned
+  deleted
+}
+
+enum booking_status {
+  pending
+  pending_approval
+  confirmed
+  cancelled_by_guest
+  cancelled_by_host
+  completed
+  expired
+}
+
+enum cancelled_by_role {
+  guest
+  host
+  admin
+  system
+}
+
+enum kyc_check_result {
+  pass
+  fail
+  review_required
+}
+
+enum kyc_check_type {
+  identity_document
+  facial_match
+  background_check
+  address_verification
+  business_license
+  tax_info
+  bank_account_match
+}
+
+enum kyc_doc_status {
+  pending
+  verified
+  rejected
+  expired
+}
+
+enum kyc_doc_type {
+  passport
+  national_id
+  drivers_license
+  utility_bill
+  tax_document
+  bank_statement
+  business_license
+}
+
+enum kyc_status {
+  unverified
+  pending
+  verified
+  rejected
+  expired
+}
+
+enum ledger_owner_type {
+  platform
+  host
+  guest
+  tax_authority
+}
+
+enum ledger_txn_type {
+  booking_payment
+  platform_fee
+  host_accrual
+  refund
+  payout
+  tax_remittance
+  adjustment
+}
+
+enum payment_status {
+  pending
+  authorized
+  captured
+  refunded
+  partially_refunded
+  failed
+}
+
+enum payout_status {
+  pending
+  processing
+  paid
+  failed
+}
+
+enum property_status {
+  draft
+  active
+  paused
+  archived
+}
+
+enum review_type {
+  guest_to_host
+  host_to_guest
+}
+
+enum room_type {
+  entire_place
+  private_room
+  shared_room
+  hotel_room
+}
+
+model outbox_events {
+  id             String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  aggregate_type String   @db.VarChar(50)
+  aggregate_id   String   @db.Uuid
+  event_type     String   @db.VarChar(50)
+  payload        Json?
+  status         String   @default("pending") @db.VarChar(20)
+  error_message  String?  @db.Text
+  attempts       Int      @default(0) @db.SmallInt
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([status, created_at])
+}
