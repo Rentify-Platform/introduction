@@ -91,7 +91,7 @@ export default function WishlistDetailPage() {
                {/* Grid items */}
                {itemCount > 0 ? (
                   <div className="grid grid-cols-1 gap-6 py-8 sm:grid-cols-2 md:grid-cols-3">
-                     {wishlist.items.map((item) => {
+                     {wishlist.items.map((item, index) => {
                         const price = item.propertyPriceCents
                            ? Number(item.propertyPriceCents) / 100
                            : 0
@@ -110,6 +110,7 @@ export default function WishlistDetailPage() {
                                  <img
                                     src={photoUrl}
                                     alt={item.propertyTitle}
+                                    loading={index < 4 ? 'eager' : 'lazy'}
                                     className="h-full w-full object-cover transition-transform duration-350 group-hover:scale-103"
                                     onError={(e) => {
                                        e.currentTarget.src =

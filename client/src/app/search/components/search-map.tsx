@@ -118,7 +118,7 @@ export function SearchMap({ properties, center, hoveredPropertyId }: SearchMapPr
          
          const popupHTML = `
             <div class="p-2 w-48 font-sans text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 rounded-lg overflow-hidden">
-               <img src="${property.thumbnailUrl || fallbackImage}" class="w-full h-24 object-cover rounded-md mb-2 pointer-events-none" />
+               <img src="${property.thumbnailUrl || fallbackImage}" loading="eager" class="w-full h-24 object-cover rounded-md mb-2 pointer-events-none" />
                <div class="font-bold text-xs truncate mb-0.5">${property.title}</div>
                <div class="text-[10px] text-zinc-500 truncate mb-1.5">
                   ${property.roomType ? property.roomType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Entire Place'}

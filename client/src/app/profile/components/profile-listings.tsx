@@ -71,7 +71,7 @@ export function ProfileListings({ listings, isLoading, isHost }: ProfileListings
             </div>
          ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-               {activeListings.map((listing) => {
+               {activeListings.map((listing, index) => {
                   const displayPrice = listing.price || Number(listing.basePriceCents) / 100
                   const displayPhoto =
                      listing.thumbnailUrl ||
@@ -87,6 +87,7 @@ export function ProfileListings({ listings, isLoading, isHost }: ProfileListings
                            <img
                               src={displayPhoto}
                               alt={listing.title}
+                              loading={index < 4 ? 'eager' : 'lazy'}
                               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                               onError={(e) => {
                                  e.currentTarget.src =

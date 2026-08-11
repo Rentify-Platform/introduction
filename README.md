@@ -1,4 +1,4 @@
-# Rentify Platform
+g# Rentify Platform
 
 Dự án nền tảng kết nối trực tiếp chủ sở hữu bất động sản với người có nhu cầu thuê nhà ngắn hạn.
 
