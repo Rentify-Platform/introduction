@@ -1,4 +1,5 @@
 import { Controller, Get, Patch, Param, Body, Query } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger'
 import {
    ListAccountsUseCase,
    ListAccountsCommand
@@ -12,6 +13,8 @@ import { AdminAccountMapper } from '../mappers/admin-account.mapper'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { Authorize } from '../../../../shared/decorators/authorize.decorator'
 
+@ApiTags('Admin - Accounts')
+@ApiBearerAuth('bearer')
 @Controller('admin/accounts')
 export class AdminAccountsController {
    constructor(
@@ -21,6 +24,12 @@ export class AdminAccountsController {
 
    @Get()
    @Authorize('admin')
+   @ApiOperation({ summary: 'List user accounts with pagination and filtering (Admin only)' })
+   @ApiQuery({ name: 'search', required: false, type: String, description: 'Search term by email or name' })
+   @ApiQuery({ name: 'role', required: false, type: String, description: 'Filter by role (guest, host, admin)' })
+   @ApiQuery({ name: 'status', required: false, type: String, description: 'Filter by status (active, suspended, banned)' })
+   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default 1)' })
+   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default 20)' })
    async listAccounts(
       @Query('search') search?: string,
       @Query('role') role?: string,
@@ -45,6 +54,8 @@ export class AdminAccountsController {
 
    @Patch(':accountId/status')
    @Authorize('admin')
+   @ApiOperation({ summary: 'Update account status (active, suspended, banned) (Admin only)' })
+   @ApiParam({ name: 'accountId', type: String, description: 'Account UUID' })
    async updateAccountStatus(
       @Param('accountId') accountId: string,
       @Body() request: UpdateAccountStatusRequest

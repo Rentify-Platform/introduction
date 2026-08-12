@@ -12,6 +12,7 @@ import {
    ForbiddenException,
    UseGuards
 } from '@nestjs/common'
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { Authorize } from 'src/shared/decorators/authorize.decorator'
 import { ApiResponse } from '../../../../shared/response/api-response'
@@ -58,6 +59,7 @@ import { BookingsMapper } from '../mappers/bookings.mapper'
 import { CreateBookingRequest } from '../requests/create-booking.request'
 import { CancelBookingRequest } from '../requests/cancel-booking.request'
 
+@ApiTags('Bookings')
 @Controller('bookings')
 export class BookingsController {
    constructor(
@@ -74,6 +76,8 @@ export class BookingsController {
 
    @Get('guest')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Get current guest booking history' })
    async getGuestBookings(@CurrentUser() user: AuthenticatedUser) {
       const command = new GetGuestBookingsCommand(user.id)
       const results = await this.getGuestBookingsUseCase.execute(command)
@@ -85,6 +89,8 @@ export class BookingsController {
 
    @Post()
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Create a new property reservation request' })
    async create(@CurrentUser() user: AuthenticatedUser, @Body() request: CreateBookingRequest) {
       const command = new CreateBookingCommand(
          request.propertyId,
@@ -103,6 +109,9 @@ export class BookingsController {
    @Get(':id')
    @Authorize()
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Get booking details by ID' })
+   @ApiParam({ name: 'id', type: String, description: 'Booking UUID' })
    async getDetails(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
       const command = new GetBookingDetailsCommand(id, user.id, user.role)
       const result = await this.getBookingDetailsUseCase.execute(command)
@@ -114,6 +123,8 @@ export class BookingsController {
 
    @Get('property/:propertyId/booked-dates')
    @Public()
+   @ApiOperation({ summary: 'Get reserved/booked dates for a property' })
+   @ApiParam({ name: 'propertyId', type: String, description: 'Property UUID' })
    async getBookedDates(@Param('propertyId') propertyId: string) {
       const query = new GetBookedDatesQuery(propertyId)
       const dates = await this.getBookedDatesUseCase.execute(query)
@@ -122,6 +133,11 @@ export class BookingsController {
 
    @Post('sepay-webhook')
    @HttpCode(HttpStatus.OK)
+   @ApiSecurity('sepay-api-key')
+   @ApiOperation({ summary: 'Handle SePay payment webhook notification' })
+   @ApiHeader({ name: 'x-api-key', required: false, description: 'SePay API key token' })
+   @ApiHeader({ name: 'x-sepay-signature', required: false, description: 'SePay HMAC signature' })
+   @ApiHeader({ name: 'x-sepay-timestamp', required: false, description: 'SePay timestamp header' })
    async handleSepayWebhook(
       @Body() body: any,
       @Req() req: any,
@@ -198,6 +214,9 @@ export class BookingsController {
 
    @Post(':id/cancel')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Cancel a booking' })
+   @ApiParam({ name: 'id', type: String, description: 'Booking UUID' })
    async cancel(
       @Param('id') id: string,
       @CurrentUser() user: AuthenticatedUser,
@@ -213,6 +232,8 @@ export class BookingsController {
 
    @Get('host')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Get host property bookings (Host/Admin only)' })
    async getHostBookings(@CurrentUser() user: AuthenticatedUser) {
       if (user.role !== 'host' && user.role !== 'admin') {
          throw new ForbiddenException('Only hosts or admins can access host bookings')
@@ -227,6 +248,9 @@ export class BookingsController {
 
    @Post(':id/approve')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Approve a booking request (Host/Admin only)' })
+   @ApiParam({ name: 'id', type: String, description: 'Booking UUID' })
    async approve(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
       if (user.role !== 'host' && user.role !== 'admin') {
          throw new ForbiddenException('Only hosts or admins can approve bookings')
@@ -241,6 +265,9 @@ export class BookingsController {
 
    @Post(':id/decline')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Decline a booking request (Host/Admin only)' })
+   @ApiParam({ name: 'id', type: String, description: 'Booking UUID' })
    async decline(
       @Param('id') id: string,
       @CurrentUser() user: AuthenticatedUser,

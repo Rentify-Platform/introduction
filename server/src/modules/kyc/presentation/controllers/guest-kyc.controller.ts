@@ -1,4 +1,5 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { JwtAuthGuard } from '../../../auth/infrastructure/jwt-auth.guard'
 import { AuthenticatedUser, CurrentUser } from '../../../auth/presentation/current-user.decorator'
@@ -10,12 +11,15 @@ import { KycDocType } from '../../domain/entities/kyc-document.entity'
 import { KycMapper } from '../mappers/kyc.mapper'
 import { SubmitKycRequest } from '../requests/submit-kyc.request'
 
+@ApiTags('KYC')
+@ApiBearerAuth('bearer')
 @Controller('kyc')
 @UseGuards(JwtAuthGuard)
 export class GuestKycController {
    constructor(private readonly submitGuestKycUseCase: SubmitGuestKycUseCase) {}
 
    @Post('submit')
+   @ApiOperation({ summary: 'Submit KYC document for verification' })
    async submitKyc(@CurrentUser() user: AuthenticatedUser, @Body() request: SubmitKycRequest) {
       const command = new SubmitKycCommand(
          user.id,

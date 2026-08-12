@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Body, Query, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import {
    GetBalanceUseCase,
    GetBalanceCommand
@@ -17,6 +18,8 @@ import { CurrentUser, AuthenticatedUser } from '../../../auth/presentation/curre
 import { LedgerOwnerType } from '../../domain/entities/ledger-account.entity'
 import { LedgerTxnType } from '../../domain/entities/ledger-transaction.entity'
 
+@ApiTags('Ledger')
+@ApiBearerAuth('bearer')
 @Controller('ledger')
 export class LedgerController {
    constructor(
@@ -26,6 +29,7 @@ export class LedgerController {
 
    @Get('accounts/balance')
    @UseGuards(JwtAuthGuard)
+   @ApiOperation({ summary: 'Get ledger account balance' })
    async getBalance(@Query() query: GetBalanceQueryRequest) {
       const command = new GetBalanceCommand(
          query.ledgerAccountId || null,
@@ -43,6 +47,7 @@ export class LedgerController {
 
    @Post('transactions')
    @UseGuards(JwtAuthGuard)
+   @ApiOperation({ summary: 'Post double-entry transaction to ledger' })
    async postTransaction(
       @CurrentUser() user: AuthenticatedUser,
       @Body() request: PostTransactionRequest

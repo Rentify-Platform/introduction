@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 import { Authorize } from '../../../../shared/decorators/authorize.decorator'
 import { Public } from '../../../../shared/decorators/public.decorator'
 import { MeilisearchService } from '../../../../shared/meilisearch/meilisearch.service'
@@ -42,6 +43,7 @@ import { SetPricingRequest } from '../requests/set-pricing.request'
 import { SubmitLicenseRequest } from '../requests/submit-license.request'
 import { UpdateListingRequest } from '../requests/update-listing.request'
 
+@ApiTags('Listings')
 @Controller('properties')
 export class ListingsController {
    constructor(
@@ -59,6 +61,8 @@ export class ListingsController {
    @Post('admin/sync-all')
    @UseGuards(JwtAuthGuard)
    @Authorize('admin')
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Sync all properties to Meilisearch index (Admin only)' })
    async syncAll() {
       const count = await this.meilisearchService.syncAllProperties()
       return ApiResponse.success(
@@ -69,6 +73,8 @@ export class ListingsController {
 
    @Post('draft')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Create a new draft property listing' })
    async createDraft(
       @CurrentUser() user: AuthenticatedUser,
       @Body() request: CreateDraftListingRequest
@@ -114,6 +120,9 @@ export class ListingsController {
 
    @Patch(':id')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Update an existing property listing' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async update(
       @Param('id') id: string,
       @CurrentUser() user: AuthenticatedUser,
@@ -161,6 +170,9 @@ export class ListingsController {
 
    @Post(':id/pricing')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Set pricing and availability rules for a listing' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async setPricing(
       @Param('id') id: string,
       @CurrentUser() user: AuthenticatedUser,
@@ -185,6 +197,9 @@ export class ListingsController {
 
    @Post(':id/license')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Submit local operating license for a property' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async submitLicense(
       @Param('id') id: string,
       @CurrentUser() user: AuthenticatedUser,
@@ -208,6 +223,9 @@ export class ListingsController {
 
    @Post(':id/publish')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Publish a draft property listing' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async publish(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
       const command = new PublishListingCommand(id, user.id)
       const property = await this.publishListingUseCase.execute(command)
@@ -219,6 +237,9 @@ export class ListingsController {
 
    @Post(':id/pause')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Pause an active property listing' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async pause(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
       const command = new PauseArchiveListingCommand(id, user.id, 'pause')
       const property = await this.pauseArchiveListingUseCase.execute(command)
@@ -230,6 +251,9 @@ export class ListingsController {
 
    @Post(':id/archive')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Archive a property listing' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async archive(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
       const command = new PauseArchiveListingCommand(id, user.id, 'archive')
       const property = await this.pauseArchiveListingUseCase.execute(command)
@@ -241,6 +265,9 @@ export class ListingsController {
 
    @Post(':id/restore')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Restore a paused/archived listing to draft' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async restore(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
       const command = new RestoreListingCommand(id, user.id)
       const property = await this.restoreListingUseCase.execute(command)
@@ -252,6 +279,8 @@ export class ListingsController {
 
    @Get('host/my-listings')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Get all property listings owned by the logged-in host' })
    async getMyListings(@CurrentUser() user: AuthenticatedUser) {
       const properties = await this.listingsRepository.findManyByHostId(user.id)
       return ApiResponse.success(
@@ -262,6 +291,8 @@ export class ListingsController {
 
    @Get('detail/:id')
    @Public()
+   @ApiOperation({ summary: 'Get full details of a property listing including reviews' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async getPropertyDetail(@Param('id') id: string) {
       const property = await this.listingsRepository.findById(id)
       if (!property) {
@@ -280,6 +311,8 @@ export class ListingsController {
 
    @Get(':id')
    @Public()
+   @ApiOperation({ summary: 'Get basic property details by ID' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async getProperty(@Param('id') id: string) {
       const property = await this.listingsRepository.findById(id)
       if (!property) {
