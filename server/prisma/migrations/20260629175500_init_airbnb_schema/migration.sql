@@ -1,3 +1,17 @@
+-- Tạo hàm uuidv7 tự động nếu chưa có
+CREATE OR REPLACE FUNCTION uuidv7() RETURNS uuid AS $$
+DECLARE
+    v_time double precision;
+    v_bytes bytea;
+BEGIN
+    v_time := extract(epoch from clock_timestamp());
+    v_bytes := int8send(floor(v_time * 1000)::bigint) || gen_random_bytes(10);
+    v_bytes := set_byte(v_bytes, 6, (get_byte(v_bytes, 6) & 15) | 112);
+    v_bytes := set_byte(v_bytes, 7, (get_byte(v_bytes, 7) & 63) | 128);
+    RETURN encode(v_bytes, 'hex')::uuid;
+END;
+$$ LANGUAGE plpgsql;
+
 -- CreateExtension
 CREATE EXTENSION IF NOT EXISTS citext;
 CREATE EXTENSION IF NOT EXISTS btree_gist;
