@@ -10,8 +10,8 @@ export class MeilisearchService implements OnModuleInit {
 
    onModuleInit() {
       this.client = new Meilisearch({
-         host: 'http://localhost:7700',
-         apiKey: 'rentify_master_key_123456'
+         host: process.env.MEILI_HOST || 'http://localhost:7700',
+         apiKey: process.env.MEILI_MASTER_KEY || 'rentify_master_key_123456'
       })
 
       this.setupIndexSettings().catch((err) => {
