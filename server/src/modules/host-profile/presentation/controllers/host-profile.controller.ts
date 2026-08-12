@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { JwtAuthGuard } from '../../../auth/infrastructure/jwt-auth.guard'
 import { AuthenticatedUser, CurrentUser } from '../../../auth/presentation/current-user.decorator'
@@ -33,6 +34,8 @@ import { SetupPayoutRequest } from '../requests/setup-payout.request'
 import { SubmitTaxInfoRequest } from '../requests/submit-tax-info.request'
 import { UpdateAboutRequest } from '../requests/update-about.request'
 
+@ApiTags('Host Profile')
+@ApiBearerAuth('bearer')
 @Controller('hosts')
 @UseGuards(JwtAuthGuard)
 export class HostProfileController {
@@ -46,6 +49,7 @@ export class HostProfileController {
    ) {}
 
    @Post('become')
+   @ApiOperation({ summary: 'Register the logged-in user as a host' })
    async becomeHost(@CurrentUser() user: AuthenticatedUser) {
       const command = new BecomeHostCommand(user.id)
       const result = await this.becomeHostUseCase.execute(command)
@@ -53,6 +57,7 @@ export class HostProfileController {
    }
 
    @Post('register')
+   @ApiOperation({ summary: 'Complete full host onboarding registration (Identity, Tax, Payout)' })
    async registerHost(
       @CurrentUser() user: AuthenticatedUser,
       @Body() request: RegisterHostRequest
@@ -83,6 +88,7 @@ export class HostProfileController {
    }
 
    @Get('profile')
+   @ApiOperation({ summary: 'Get current host profile details' })
    async getProfile(@CurrentUser() user: AuthenticatedUser) {
       const command = new GetHostProfileCommand(user.id)
       const profile = await this.getHostProfileUseCase.execute(command)
@@ -93,6 +99,7 @@ export class HostProfileController {
    }
 
    @Post('tax-info')
+   @ApiOperation({ summary: 'Submit host tax identification information' })
    async submitTaxInfo(
       @CurrentUser() user: AuthenticatedUser,
       @Body() request: SubmitTaxInfoRequest
@@ -108,6 +115,7 @@ export class HostProfileController {
    }
 
    @Post('payout')
+   @ApiOperation({ summary: 'Setup host payout account' })
    async setupPayout(@CurrentUser() user: AuthenticatedUser, @Body() request: SetupPayoutRequest) {
       const command = new SetupPayoutCommand(
          user.id,
@@ -119,6 +127,7 @@ export class HostProfileController {
    }
 
    @Patch('profile/about')
+   @ApiOperation({ summary: 'Update host bio/about section' })
    async updateAbout(@CurrentUser() user: AuthenticatedUser, @Body() request: UpdateAboutRequest) {
       const command = new UpdateAboutCommand(user.id, request.about)
       const profile = await this.updateAboutUseCase.execute(command)

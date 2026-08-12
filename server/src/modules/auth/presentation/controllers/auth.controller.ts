@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Patch, Body, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { SignupUseCase, SignupCommand } from '../../application/use-cases/signup.usecase'
 import { LoginUseCase, LoginCommand } from '../../application/use-cases/login.usecase'
 import { GetMeUseCase, GetMeCommand } from '../../application/use-cases/get-me.usecase'
@@ -14,6 +15,7 @@ import { ApiResponse } from '../../../../shared/response/api-response'
 import { JwtAuthGuard } from '../../infrastructure/jwt-auth.guard'
 import { CurrentUser, AuthenticatedUser } from '../current-user.decorator'
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
    constructor(
@@ -24,6 +26,7 @@ export class AuthController {
    ) {}
 
    @Post('signup')
+   @ApiOperation({ summary: 'Register a new user account' })
    async signup(@Body() request: SignupRequest) {
       const command = new SignupCommand(
          request.email,
@@ -40,6 +43,7 @@ export class AuthController {
    }
 
    @Post('login')
+   @ApiOperation({ summary: 'Log in with email and password' })
    async login(@Body() request: LoginRequest) {
       const command = new LoginCommand(request.email, request.password)
       const result = await this.loginUseCase.execute(command)
@@ -48,6 +52,8 @@ export class AuthController {
 
    @Get('me')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Get current logged-in user profile' })
    async me(@CurrentUser() user: AuthenticatedUser) {
       const command = new GetMeCommand(user.id)
       const result = await this.getMeUseCase.execute(command)
@@ -59,6 +65,8 @@ export class AuthController {
 
    @Patch('profile')
    @UseGuards(JwtAuthGuard)
+   @ApiBearerAuth('bearer')
+   @ApiOperation({ summary: 'Update profile information for the logged-in user' })
    async updateProfile(
       @CurrentUser() user: AuthenticatedUser,
       @Body() request: UpdateProfileRequest

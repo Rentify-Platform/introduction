@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Body, Param } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 import { ReviewKycUseCase, ReviewKycCommand } from '../../application/use-cases/review-kyc.usecase'
 import {
    RescreenKycUseCase,
@@ -11,6 +12,8 @@ import { ApiResponse } from '../../../../shared/response/api-response'
 import { CurrentUser, AuthenticatedUser } from '../../../auth/presentation/current-user.decorator'
 import { Authorize } from '../../../../shared/decorators/authorize.decorator'
 
+@ApiTags('Admin - KYC')
+@ApiBearerAuth('bearer')
 @Controller('admin/kyc')
 export class AdminKycController {
    constructor(
@@ -21,6 +24,7 @@ export class AdminKycController {
 
    @Get('pending')
    @Authorize('admin')
+   @ApiOperation({ summary: 'Get list of pending KYC document submissions (Admin only)' })
    async getPendingKyc() {
       const documents = await this.getPendingKycUseCase.execute()
       return ApiResponse.success(
@@ -31,6 +35,8 @@ export class AdminKycController {
 
    @Post('review/:documentId')
    @Authorize('admin')
+   @ApiOperation({ summary: 'Review (approve or reject) a KYC document (Admin only)' })
+   @ApiParam({ name: 'documentId', type: String, description: 'KYC Document UUID' })
    async reviewKyc(
       @CurrentUser() user: AuthenticatedUser,
       @Param('documentId') documentId: string,
@@ -53,6 +59,7 @@ export class AdminKycController {
 
    @Post('rescreen')
    @Authorize('admin')
+   @ApiOperation({ summary: 'Trigger rescreening for expiring KYC background checks (Admin only)' })
    async rescreenExpiringChecks(@CurrentUser() user: AuthenticatedUser) {
       const command = new RescreenKycCommand()
       const result = await this.rescreenKycUseCase.execute(command)

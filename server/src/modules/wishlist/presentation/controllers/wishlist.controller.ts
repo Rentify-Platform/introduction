@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { JwtAuthGuard } from '../../../auth/infrastructure/jwt-auth.guard'
 import { AuthenticatedUser, CurrentUser } from '../../../auth/presentation/current-user.decorator'
@@ -25,6 +26,8 @@ import {
 import { CreateWishlistRequest } from '../requests/create-wishlist.request'
 import { WishlistMapper } from '../mappers/wishlist.mapper'
 
+@ApiTags('Wishlist')
+@ApiBearerAuth('bearer')
 @Controller('wishlists')
 @UseGuards(JwtAuthGuard)
 export class WishlistController {
@@ -37,6 +40,7 @@ export class WishlistController {
    ) {}
 
    @Post()
+   @ApiOperation({ summary: 'Create a new wishlist collection' })
    async create(@CurrentUser() user: AuthenticatedUser, @Body() request: CreateWishlistRequest) {
       const command = new CreateWishlistCommand(user.id, request.name)
       const wishlist = await this.createWishlistUseCase.execute(command)
@@ -47,6 +51,7 @@ export class WishlistController {
    }
 
    @Get()
+   @ApiOperation({ summary: 'Get all wishlists of the logged-in user' })
    async getMine(@CurrentUser() user: AuthenticatedUser) {
       const command = new GetUserWishlistsCommand(user.id)
       const wishlists = await this.getUserWishlistsUseCase.execute(command)
@@ -55,6 +60,8 @@ export class WishlistController {
    }
 
    @Get(':id')
+   @ApiOperation({ summary: 'Get details and items of a specific wishlist' })
+   @ApiParam({ name: 'id', type: String, description: 'Wishlist UUID' })
    async getDetails(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
       const command = new GetWishlistDetailsCommand(id, user.id)
       const wishlist = await this.getWishlistDetailsUseCase.execute(command)
@@ -65,6 +72,9 @@ export class WishlistController {
    }
 
    @Post(':id/properties/:propertyId')
+   @ApiOperation({ summary: 'Add a property to a wishlist' })
+   @ApiParam({ name: 'id', type: String, description: 'Wishlist UUID' })
+   @ApiParam({ name: 'propertyId', type: String, description: 'Property UUID' })
    async addItem(
       @Param('id') id: string,
       @Param('propertyId') propertyId: string,
@@ -79,6 +89,9 @@ export class WishlistController {
    }
 
    @Delete(':id/properties/:propertyId')
+   @ApiOperation({ summary: 'Remove a property from a wishlist' })
+   @ApiParam({ name: 'id', type: String, description: 'Wishlist UUID' })
+   @ApiParam({ name: 'propertyId', type: String, description: 'Property UUID' })
    async removeItem(
       @Param('id') id: string,
       @Param('propertyId') propertyId: string,

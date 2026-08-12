@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common'
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import {
    SearchListingsUseCase,
@@ -11,6 +12,7 @@ import {
 import { SearchListingsRequest } from '../requests/search-listings.request'
 import { SearchMapper } from '../mappers/search.mapper'
 
+@ApiTags('Search')
 @Controller('properties')
 export class SearchController {
    constructor(
@@ -19,11 +21,13 @@ export class SearchController {
    ) {}
 
    @Get()
+   @ApiOperation({ summary: 'Get properties with search & filters (Alias for /properties/search)' })
    async getProperties(@Query() request: SearchListingsRequest) {
       return this.search(request)
    }
 
    @Get('search')
+   @ApiOperation({ summary: 'Search published listings by query, city, price range, geo radius, amenities' })
    async search(@Query() request: SearchListingsRequest) {
       const query = new SearchListingsQuery(
          request.query,
@@ -52,6 +56,8 @@ export class SearchController {
    }
 
    @Get(':id/detail')
+   @ApiOperation({ summary: 'Get listing details and public reviews by property ID' })
+   @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
    async getDetail(@Param('id') id: string) {
       const query = new GetListingDetailQuery(id)
       const detail = await this.getListingDetailUseCase.execute(query)
