@@ -53,7 +53,7 @@ export function SearchList({ properties, city, onHoverProperty }: SearchListProp
             </div>
          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10">
-               {properties.map((property) => {
+               {properties.map((property, index) => {
                   const stableRating =
                      4.5 + (parseInt(property.id.replace(/-/g, '').slice(0, 4), 16) % 50) / 100
                   const reviewsCount = (parseInt(property.id.replace(/-/g, '').slice(4, 6), 16) % 95) + 5
@@ -82,8 +82,10 @@ export function SearchList({ properties, city, onHoverProperty }: SearchListProp
                               src={property.thumbnailUrl || fallbackImage}
                               alt={property.title}
                               fill
+                              priority={index < 4}
+                              loading={index < 4 ? 'eager' : undefined}
                               className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
-                              sizes="(max-w-640px) 100vw, 33vw"
+                              sizes="(max-width: 640px) 100vw, 33vw"
                            />
 
                            {/* Guest favorite badge */}

@@ -76,7 +76,8 @@ export function PropertyPhotosCollage({ photoUrls, title }: PropertyPhotosCollag
                   onClick={() => openLightbox(0)}
                   className="cursor-pointer object-cover transition-all duration-350 hover:brightness-90"
                   priority
-                  sizes="(max-w-768px) 100vw, 50vw"
+                  loading="eager"
+                  sizes="(max-width: 768px) 100vw, 50vw"
                />
             </div>
             {/* Quad grid of smaller photos (Right) */}
@@ -89,7 +90,9 @@ export function PropertyPhotosCollage({ photoUrls, title }: PropertyPhotosCollag
                         fill
                         onClick={() => openLightbox(i + 1)}
                         className="cursor-pointer object-cover transition-all duration-350 hover:brightness-90"
-                        sizes="(max-w-768px) 50vw, 25vw"
+                        priority
+                        loading="eager"
+                        sizes="(max-width: 768px) 50vw, 25vw"
                      />
                   </div>
                ))}

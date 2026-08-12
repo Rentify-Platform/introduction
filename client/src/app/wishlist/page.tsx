@@ -94,7 +94,7 @@ export default function WishlistsPage() {
                {/* Wishlist Grid */}
                {wishlists && wishlists.length > 0 ? (
                   <div className="grid grid-cols-1 gap-6 py-8 sm:grid-cols-2 md:grid-cols-3">
-                     {wishlists.map((wishlist) => {
+                     {wishlists.map((wishlist, index) => {
                         const firstItem = wishlist.items[0]
                         const itemCount = wishlist.items.length
                         const formattedDate = new Date(wishlist.createdAt).toLocaleDateString(
@@ -117,6 +117,7 @@ export default function WishlistsPage() {
                                     <img
                                        src={firstItem.propertyPhotoUrl}
                                        alt={wishlist.name}
+                                       loading={index < 4 ? 'eager' : 'lazy'}
                                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-103"
                                        onError={(e) => {
                                           e.currentTarget.src =

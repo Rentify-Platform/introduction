@@ -39,6 +39,7 @@ export function PriceBreakdownCard({ booking, listingDetail }: PriceBreakdownCar
                <img
                   src={property.thumbnailUrl || '/placeholder.png'}
                   alt={property.title}
+                  loading="eager"
                   className="h-full w-full object-cover"
                />
             </div>
