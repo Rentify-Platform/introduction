@@ -234,7 +234,7 @@ export function HomeContent() {
                </div>
             ) : (
                <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
-                  {properties.map((property) => {
+                  {properties.map((property, index) => {
                      // Stable rating from 4.5 to 5.0 using the id
                      const stableRating =
                         4.5 + (parseInt(property.id.replace(/-/g, '').slice(0, 4), 16) % 50) / 100
@@ -259,8 +259,10 @@ export function HomeContent() {
                                  src={property.thumbnailUrl || fallbackImage}
                                  alt={property.title}
                                  fill
+                                 priority={index < 4}
+                                 loading={index < 4 ? 'eager' : undefined}
                                  className="object-cover transition-transform duration-350 ease-out group-hover:scale-105"
-                                 sizes="(max-w-768px) 100vw, (max-w-1024px) 33vw, 25vw"
+                                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
                               />
 
                               {/* Favorite Button */}
@@ -361,8 +363,9 @@ export function HomeContent() {
                         alt="Woman standing in a bright minimalist living room with houseplants"
                         fill
                         className="object-cover"
-                        sizes="(max-w-768px) 100vw, 50vw"
+                        sizes="(max-width: 768px) 100vw, 50vw"
                         priority
+                        loading="eager"
                      />
                   </div>
                </div>

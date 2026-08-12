@@ -29,6 +29,8 @@ interface HostListingCardProps {
    pausePending: boolean
    archivePending: boolean
    restorePending: boolean
+   priority?: boolean
+   loading?: 'eager' | 'lazy'
 }
 
 const STATUS_CONFIG: Record<
@@ -66,7 +68,9 @@ export function HostListingCard({
    publishPending,
    pausePending,
    archivePending,
-   restorePending
+   restorePending,
+   priority,
+   loading
 }: HostListingCardProps) {
    const thumbnail =
       listing.photoUrls?.[0] ??
@@ -84,6 +88,8 @@ export function HostListingCard({
                src={thumbnail}
                alt={listing.title}
                fill
+               priority={priority}
+               loading={loading}
                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
             />
