@@ -32,6 +32,7 @@ export function PropertyReviews({ reviews, averageRating, totalReviews }: Proper
                                  }
                                  alt={review.authorName}
                                  fill
+                                 sizes="40px"
                                  className="object-cover"
                               />
                            </div>

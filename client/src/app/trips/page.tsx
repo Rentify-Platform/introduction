@@ -173,7 +173,7 @@ export default function MyTripsPage() {
                </div>
             ) : (
                <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2">
-                  {filteredBookings.map((b) => {
+                  {filteredBookings.map((b, index) => {
                      const isVnd = b.currency.toUpperCase() === 'VND'
                      const formattedPriceVal = isVnd
                         ? Number(b.totalPriceCents)
@@ -196,8 +196,10 @@ export default function MyTripsPage() {
                                     src={thumbnail}
                                     alt={b.property?.title || 'Property view'}
                                     fill
+                                    priority={index < 4}
+                                    loading={index < 4 ? 'eager' : undefined}
                                     className="object-cover"
-                                    sizes="(max-w-768px) 100vw, 150px"
+                                    sizes="(max-width: 768px) 100vw, 150px"
                                  />
                               </div>
 

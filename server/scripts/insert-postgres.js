@@ -159,7 +159,7 @@ async function main() {
          VALUES 
             ('${HOST_ID}', 'host@rentify.com', 'host', 'active', NOW(), NOW()),
             ('${GUEST_ID}', 'guest@rentify.com', 'guest', 'active', NOW(), NOW())
-         ON CONFLICT (id) DO NOTHING
+         ON CONFLICT DO NOTHING
       `)
 
       // Ensure profiles exist

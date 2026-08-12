@@ -254,7 +254,7 @@ export default function HostReservationsPage() {
             {/* Reservations List */}
             {!isError && filteredBookings.length > 0 && (
                <div className="space-y-4">
-                  {filteredBookings.map((b) => {
+                  {filteredBookings.map((b, index) => {
                      const isVnd = b.currency.toUpperCase() === 'VND'
                      const formattedPrice = isVnd
                         ? Number(b.totalPriceCents)
@@ -276,8 +276,10 @@ export default function HostReservationsPage() {
                                  src={thumbnail}
                                  alt={b.property?.title || 'Listing view'}
                                  fill
+                                 priority={index < 4}
+                                 loading={index < 4 ? 'eager' : undefined}
                                  className="object-cover"
-                                 sizes="(max-w-768px) 100vw, 200px"
+                                 sizes="(max-width: 768px) 100vw, 200px"
                               />
                            </div>
 
