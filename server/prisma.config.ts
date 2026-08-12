@@ -9,6 +9,6 @@ export default defineConfig({
       path: 'prisma/migrations'
    },
    datasource: {
-      url: process.env['DATABASE_URL']
+      url: process.env['DATABASE_URL'] || 'postgresql://rentify:rentify@postgres:5432/rentify?schema=public'
    }
 })

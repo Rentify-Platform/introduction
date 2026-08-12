@@ -11,6 +11,7 @@ services:
          - '5432:5432'
       volumes:
          - rentify_pg_data:/var/lib/postgresql/data
+         - ./docker/postgres/init-citext.sql:/docker-entrypoint-initdb.d/init-citext.sql:ro
       healthcheck:
          test: ['CMD-SHELL', 'pg_isready -U rentify -d rentify']
          interval: 10s
@@ -50,11 +51,14 @@ services:
          dockerfile: Dockerfile
       container_name: rentify-server
       restart: unless-stopped
+      command: sh -c "npx prisma migrate deploy && node dist/main.js"
       ports:
          - '8080:8080'
       environment:
          - DATABASE_URL=postgresql://rentify:rentify@postgres:5432/rentify?schema=public
          - REDIS_URL=redis://redis:6379
+         - MEILI_HOST=http://meilisearch:7700
+         - MEILI_MASTER_KEY=rentify_master_key_123456
          - PORT=8080
       depends_on:
          postgres:
