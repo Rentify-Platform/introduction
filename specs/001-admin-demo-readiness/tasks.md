@@ -6,18 +6,18 @@
 
 ## Phase 1 — Small Admin-Only Ledger Boundary
 
-- [ ] T001 [US2] Record in `specs/001-admin-demo-readiness/research.md` that `admin-ui/src/features/ledger/services/ledger-service.ts` is the only repository consumer of `/ledger/accounts/balance`; preserve `server/src/modules/ledger/presentation/controllers/ledger.controller.ts` unchanged.
-- [ ] T002 [US2] Create `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.ts` with guarded/admin-authorized `GET /admin/ledger/platform-balance` and fixed `GetBalanceCommand(null, 'platform', null, 'revenue', 'VND')`; reuse the existing use case, mapper, and response wrapper.
-- [ ] T003 [US2] Register `AdminLedgerController` in `server/src/modules/ledger/ledger.module.ts` without changing providers, persistence, schema, or the generic ledger controller.
-- [ ] T004 [US2] Create `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.spec.ts` for fixed selector, admin success, no-token 401, guest 403, and host 403; retain `server/src/modules/ledger/application/use-cases/get-balance.usecase.spec.ts` as regression coverage.
-- [ ] T005 [CORE] Align `specs/001-admin-demo-readiness/contracts/admin-api.openapi.yaml` with the fixed admin route and unchanged generic route.
-- [ ] T006 [CORE] **Gate 1**: run focused ledger tests, then `npm test -- --runInBand`, `npm run lint`, `npm run build` in `server`, plus `npm run test:e2e` when available; record exact results/environment omission in `specs/001-admin-demo-readiness/quickstart.md`. Authorization or build failure blocks Phase 2.
+- [x] T001 [US2] Record in `specs/001-admin-demo-readiness/research.md` that `admin-ui/src/features/ledger/services/ledger-service.ts` is the only repository consumer of `/ledger/accounts/balance`; preserve `server/src/modules/ledger/presentation/controllers/ledger.controller.ts` unchanged.
+- [x] T002 [US2] Create `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.ts` with guarded/admin-authorized `GET /admin/ledger/platform-balance` and fixed `GetBalanceCommand(null, 'platform', null, 'revenue', 'VND')`; reuse the existing use case, mapper, and response wrapper.
+- [x] T003 [US2] Register `AdminLedgerController` in `server/src/modules/ledger/ledger.module.ts` without changing providers, persistence, schema, or the generic ledger controller.
+- [x] T004 [US2] Create `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.spec.ts` for fixed selector, admin success, no-token 401, guest 403, and host 403; retain `server/src/modules/ledger/application/use-cases/get-balance.usecase.spec.ts` as regression coverage.
+- [x] T005 [CORE] Align `specs/001-admin-demo-readiness/contracts/admin-api.openapi.yaml` with the fixed admin route and unchanged generic route.
+- [x] T006 [CORE] **Gate 1**: run focused ledger tests, then `npm test -- --runInBand`, `npm run lint`, `npm run build` in `server`, plus `npm run test:e2e` when available; record exact results/environment omission in `specs/001-admin-demo-readiness/quickstart.md`. Authorization or build failure blocks Phase 2.
 
 ## Phase 2 — Backend Moderation Invariants
 
-- [ ] T007 [P] [US3] Add an HTTP 403 admin-target exception in `server/src/modules/auth/domain/errors/auth.errors.ts` and enforce guest/host-only status mutation before persistence in `server/src/modules/auth/application/use-cases/update-account-status.usecase.ts`.
-- [ ] T008 [US3] Create `server/src/modules/auth/application/use-cases/update-account-status.usecase.spec.ts` for guest/host success, self/other-admin 403, not-found, and no repository write for admin targets.
-- [ ] T009 [US3] Create `server/src/modules/auth/presentation/controllers/admin-accounts.controller.spec.ts` for admin passage, no-token 401, and guest/host 403 on the status route without changing `admin-accounts.controller.ts` contract.
+- [x] T007 [P] [US3] Add an HTTP 403 admin-target exception in `server/src/modules/auth/domain/errors/auth.errors.ts` and enforce guest/host-only status mutation before persistence in `server/src/modules/auth/application/use-cases/update-account-status.usecase.ts`.
+- [x] T008 [US3] Create `server/src/modules/auth/application/use-cases/update-account-status.usecase.spec.ts` for guest/host success, self/other-admin 403, not-found, and no repository write for admin targets.
+- [x] T009 [US3] Create `server/src/modules/auth/presentation/controllers/admin-accounts.controller.spec.ts` for admin passage, no-token 401, and guest/host 403 on the status route without changing `admin-accounts.controller.ts` contract.
 - [ ] T010 [P] [US4] Update `server/src/modules/listings/application/use-cases/update-property-status-admin.usecase.ts` to require `checkHostKycVerified(property.hostId)` and verified `findVerifiedLicenseByPropertyId(property.id)` for every activation, including `requiresLocalLicense=false`; reuse `server/src/modules/listings/domain/errors/listings.errors.ts` and preserve paused/archived behavior.
 - [ ] T011 [US4] Extend `server/src/modules/listings/application/use-cases/listings.usecases.spec.ts` for both-prerequisites success, unverified KYC, missing/unverified license for both license-flag values, and no status write on failure.
 - [ ] T012 [US4] Create `server/src/modules/listings/presentation/controllers/admin-listings.controller.spec.ts` for admin/no-token/guest/host behavior on list, license, and status routes without contract changes.
