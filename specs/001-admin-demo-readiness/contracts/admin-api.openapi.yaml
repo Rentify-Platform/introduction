@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Rentify Admin Demo Contract
   version: 1.0.0
-  description: Existing admin-facing contracts and the planned protected platform-balance read.
+  description: Existing admin-facing contracts, including the selected admin-only platform-balance endpoint used by Rentify Admin.
 servers:
   - url: http://127.0.0.1:8080
 security:
@@ -92,9 +92,10 @@ paths:
                 status: { type: string, enum: [active, paused, archived] }
       responses:
         '200': { description: Property updated }
-        '400': { description: Invalid transition or unmet activation prerequisite }
+        '400': { description: Invalid status transition or malformed request }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '403':
+          description: Caller lacks admin permission, host KYC is not verified, or property license is not verified
         '404': { description: Property not found }
   /admin/kyc/pending:
     get:
@@ -133,7 +134,7 @@ paths:
   /admin/ledger/platform-balance:
     get:
       summary: Read platform revenue balance in VND
-      description: Preferred compatibility-safe route if the existing general ledger balance route has non-admin consumers.
+      description: Selected admin-only platform-balance endpoint used by Rentify Admin.
       responses:
         '200':
           description: Platform balance

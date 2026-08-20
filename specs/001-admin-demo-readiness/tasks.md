@@ -1,138 +1,90 @@
 # Tasks: Rentify Admin Demo Readiness
 
-**Input**: [spec.md](./spec.md), [plan.md](./plan.md), [research.md](./research.md), [data-model.md](./data-model.md), [admin-api.openapi.yaml](./contracts/admin-api.openapi.yaml)  
-**Scope rule**: Không database migration, không dependency mới, không analytics, booking management, audit logs hoặc tính năng ngoài spec.  
-**Priority rule**: Mọi task gắn `[P1]` là bắt buộc cho minimum demo. `[P]` nghĩa là có thể thực hiện song song sau khi dependencies ghi trong phase đã hoàn tất.
+**Input**: [spec.md](./spec.md), [plan.md](./plan.md), [research.md](./research.md), [data-model.md](./data-model.md), [admin-api.openapi.yaml](./contracts/admin-api.openapi.yaml)
+**Baseline**: `HEAD ba924ea` over `origin/main fcf558d`
+**Scope**: No migrations, dependencies, analytics, booking management, rewrites, or unrelated features. All tasks are P1. `[P]` means parallel-safe only after the preceding gate.
 
-## Format
+## Phase 1 — Small Admin-Only Ledger Boundary
 
-`- [ ] Txxx [P?] [P1] [USx] Description with exact target files`
+- [ ] T001 [US2] Record in `specs/001-admin-demo-readiness/research.md` that `admin-ui/src/features/ledger/services/ledger-service.ts` is the only repository consumer of `/ledger/accounts/balance`; preserve `server/src/modules/ledger/presentation/controllers/ledger.controller.ts` unchanged.
+- [ ] T002 [US2] Create `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.ts` with guarded/admin-authorized `GET /admin/ledger/platform-balance` and fixed `GetBalanceCommand(null, 'platform', null, 'revenue', 'VND')`; reuse the existing use case, mapper, and response wrapper.
+- [ ] T003 [US2] Register `AdminLedgerController` in `server/src/modules/ledger/ledger.module.ts` without changing providers, persistence, schema, or the generic ledger controller.
+- [ ] T004 [US2] Create `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.spec.ts` for fixed selector, admin success, no-token 401, guest 403, and host 403; retain `server/src/modules/ledger/application/use-cases/get-balance.usecase.spec.ts` as regression coverage.
+- [ ] T005 [CORE] Align `specs/001-admin-demo-readiness/contracts/admin-api.openapi.yaml` with the fixed admin route and unchanged generic route.
+- [ ] T006 [CORE] **Gate 1**: run focused ledger tests, then `npm test -- --runInBand`, `npm run lint`, `npm run build` in `server`, plus `npm run test:e2e` when available; record exact results/environment omission in `specs/001-admin-demo-readiness/quickstart.md`. Authorization or build failure blocks Phase 2.
 
-- `[US1]`: Secure Admin Access
-- `[US2]`: Dashboard and Platform Balance
-- `[US3]`: User Management
-- `[US4]`: Property and License Management
-- `[US5]`: KYC Queue and Review
-- `[CORE]`: Cross-cutting validation or infrastructure
+## Phase 2 — Backend Moderation Invariants
 
-## Phase 1: Backend Authorization Foundation
+- [ ] T007 [P] [US3] Add an HTTP 403 admin-target exception in `server/src/modules/auth/domain/errors/auth.errors.ts` and enforce guest/host-only status mutation before persistence in `server/src/modules/auth/application/use-cases/update-account-status.usecase.ts`.
+- [ ] T008 [US3] Create `server/src/modules/auth/application/use-cases/update-account-status.usecase.spec.ts` for guest/host success, self/other-admin 403, not-found, and no repository write for admin targets.
+- [ ] T009 [US3] Create `server/src/modules/auth/presentation/controllers/admin-accounts.controller.spec.ts` for admin passage, no-token 401, and guest/host 403 on the status route without changing `admin-accounts.controller.ts` contract.
+- [ ] T010 [P] [US4] Update `server/src/modules/listings/application/use-cases/update-property-status-admin.usecase.ts` to require `checkHostKycVerified(property.hostId)` and verified `findVerifiedLicenseByPropertyId(property.id)` for every activation, including `requiresLocalLicense=false`; reuse `server/src/modules/listings/domain/errors/listings.errors.ts` and preserve paused/archived behavior.
+- [ ] T011 [US4] Extend `server/src/modules/listings/application/use-cases/listings.usecases.spec.ts` for both-prerequisites success, unverified KYC, missing/unverified license for both license-flag values, and no status write on failure.
+- [ ] T012 [US4] Create `server/src/modules/listings/presentation/controllers/admin-listings.controller.spec.ts` for admin/no-token/guest/host behavior on list, license, and status routes without contract changes.
+- [ ] T013 [P] [US5] Add blank-reason and non-pending-review errors in `server/src/modules/kyc/domain/errors/kyc.errors.ts`; enforce trimmed non-empty reject reason and pending-only review in `server/src/modules/kyc/application/use-cases/review-kyc.usecase.ts`; align `server/src/modules/kyc/presentation/requests/review-kyc.request.ts` without accepting reviewer identity.
+- [ ] T014 [US5] Extend `server/src/modules/kyc/application/use-cases/review-kyc.usecase.spec.ts` for approve/reject success, blank/whitespace failure, verified/rejected conflict, reviewer persistence, and no writes on failure.
+- [ ] T015 [US5] Create `server/src/modules/kyc/presentation/controllers/admin-kyc.controller.spec.ts` for admin/no-token/guest/host authorization on pending/review routes without contract changes.
+- [ ] T016 [CORE] **Gate 2**: run focused auth/listings/KYC tests, then `npm test -- --runInBand`, `npm run lint`, `npm run build` in `server`, plus e2e when available; log results in quickstart. Admin-target, activation, stale-review, authorization, or build failure blocks frontend work.
 
-**Goal**: Mọi dữ liệu/hành động Admin trong demo được backend bảo vệ trước khi sửa UI.
+## Phase 3 — Authentication Shell and Navigation
 
-- [ ] T001 [P1] [US2] Audit usages of the general balance endpoint and choose the compatibility-safe route described in the approved plan; record the chosen route and consumer evidence in `specs/001-admin-demo-readiness/research.md`, inspecting `server/src/modules/ledger/presentation/controllers/ledger.controller.ts`, `admin-ui/src/features/ledger/services/ledger-service.ts`, and all matches returned for `/ledger/accounts/balance`.
-- [ ] T002 [P1] [US2] Implement an admin-authorized platform revenue VND balance read without restricting unrelated guest/host ledger behavior in `server/src/modules/ledger/presentation/controllers/ledger.controller.ts` or the new exact file `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.ts`, and register it in `server/src/modules/ledger/ledger.module.ts`; reuse `server/src/modules/ledger/application/use-cases/get-balance.usecase.ts` and `server/src/modules/ledger/presentation/mappers/ledger.mapper.ts`.
-- [ ] T003 [P1] [US2] Immediately add focused authorization/selector tests for the protected platform balance route in the new exact file `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.spec.ts` (or `server/src/modules/ledger/presentation/controllers/ledger.controller.spec.ts` if T002 safely retains the route there), covering admin success, no-token 401, guest 403, host 403, and fixed `platform/revenue/VND` selection.
-- [ ] T004 [P1] [CORE] Run the focused ledger tests from T003 and record command/result under a Phase 1 validation log in `specs/001-admin-demo-readiness/quickstart.md`; do not continue past a failing authorization case.
+- [ ] T017 [US1] Normalize 401 clearing and 403 access-denied handling in `admin-ui/src/lib/api/api-client.ts`, `admin-ui/src/features/auth/store/use-auth-store.ts`, `admin-ui/src/features/auth/hooks/use-auth-queries.ts`, and `admin-ui/src/features/auth/hooks/use-auth-mutations.ts`.
+- [ ] T018 [US1] Implement login idle/loading/validation/authentication/unauthorized/success-redirect states without empty state in `admin-ui/src/app/login/page.tsx`, using `admin-ui/src/features/auth/services/auth-service.ts`, `admin-ui/src/features/auth/schemas/auth-schema.ts`, and `admin-ui/src/features/auth/types.ts`.
+- [ ] T019 [US1] Prevent protected-content flash, render explicit session/unauthorized states, and retain only Overview/Users/Properties/KYC navigation in `admin-ui/src/app/(dashboard)/layout.tsx`.
+- [ ] T020 [CORE] **Gate 3**: exercise six login states, expired token, guest/host denial, and content-flash prevention against real API; run `npm run lint` and `npm run build` in `admin-ui`; log results in quickstart.
 
-## Phase 2: Backend Account Mutation Invariant
+## Phase 4 — Explicit Real-Data Overview
 
-**Goal**: Không admin nào có thể thay đổi status của chính mình hoặc admin khác.
+- [ ] T021 [US2] Move `admin-ui/src/features/ledger/services/ledger-service.ts` to `/admin/ledger/platform-balance`, type balance/currency, remove fake-zero fallback, and expose data/loading/error/unauthorized/refetch from `admin-ui/src/features/ledger/hooks/use-ledger-queries.ts`.
+- [ ] T022 [P] [US2] Support real Overview counts through `admin-ui/src/features/users/services/users-service.ts`, `admin-ui/src/features/users/hooks/use-users-queries.ts`, `admin-ui/src/features/properties/services/properties-service.ts`, `admin-ui/src/features/properties/hooks/use-properties-queries.ts`, `admin-ui/src/features/kyc/services/kyc-service.ts`, and `admin-ui/src/features/kyc/hooks/use-kyc-queries.ts`; use list totals and pending-array length, not analytics or simulation.
+- [ ] T023 [US2] In `admin-ui/src/app/(dashboard)/components/overview-dashboard-container.tsx`, render only platform balance, total users, total properties, pending KYC count, and shortcuts to `/users`, `/properties`, and `/kyc`; remove mock bookings, hard-coded/extra KPIs, Recent Bookings, and Meilisearch control.
+- [ ] T024 [US2] Implement loading, empty/unavailable, error+retry, unauthorized, and success for every Overview data region in `admin-ui/src/app/(dashboard)/components/overview-dashboard-container.tsx`; never map empty/error to fake zero.
+- [ ] T025 [CORE] **Gate 4**: exercise five states for all four values, compare with real APIs, search Overview for mocks/hard-coded records/bookings/Meilisearch, then run admin-ui lint/build and log results in quickstart.
 
-- [ ] T005 [P1] [US3] Add a clear `BusinessException` with HTTP 403 for protected admin targets in `server/src/modules/auth/domain/errors/auth.errors.ts`, then enforce the target-role check before repository mutation in `server/src/modules/auth/application/use-cases/update-account-status.usecase.ts`.
-- [ ] T006 [P1] [US3] Immediately add focused use-case tests in the new exact file `server/src/modules/auth/application/use-cases/update-account-status.usecase.spec.ts` for guest success, host success, own-admin target 403, other-admin target 403, account-not-found, and assertions that `updateStatus` is never called for an admin target.
-- [ ] T007 [P1] [US3] Add controller/guard authorization coverage for `PATCH /admin/accounts/:accountId/status` in the new exact file `server/src/modules/auth/presentation/controllers/admin-accounts.controller.spec.ts`, covering no-token 401, guest/host 403 and authenticated-admin passage to the use case without changing the existing request/response contract in `server/src/modules/auth/presentation/controllers/admin-accounts.controller.ts`.
-- [ ] T008 [P1] [CORE] Run the focused auth tests from T006–T007 and append command/result to `specs/001-admin-demo-readiness/quickstart.md`; resolve all failures before proceeding.
+## Phase 5 — Users Vertical Slice
 
-## Phase 3: Backend Property and KYC Invariants
+- [ ] T026 [P] [US3] Synchronize filters/pagination and expose retry/error classification in `admin-ui/src/features/users/services/users-service.ts`, `admin-ui/src/features/users/types.ts`, `admin-ui/src/features/users/hooks/use-users-queries.ts`, `admin-ui/src/features/users/components/users-filter-bar.tsx`, and `admin-ui/src/app/(dashboard)/users/components/users-management-container.tsx`; reset page on each filter change.
+- [ ] T027 [P] [US3] Separate loading/empty/error+retry/unauthorized/success in `admin-ui/src/features/users/components/users-table.tsx` and wire state/refetch through `admin-ui/src/app/(dashboard)/users/components/users-management-container.tsx`.
+- [ ] T028 [US3] Remove status actions for all admin rows while retaining guest/host actions in `admin-ui/src/features/users/components/user-actions-menu.tsx`.
+- [ ] T029 [US3] Create `admin-ui/src/features/users/components/user-status-confirmation-dialog.tsx` using `admin-ui/src/components/ui/dialog.tsx`; wire confirmation through `admin-ui/src/features/users/components/users-table.tsx` and `admin-ui/src/app/(dashboard)/users/components/users-management-container.tsx`.
+- [ ] T030 [US3] Add pending lock, backend messages, success invalidation, and stale refetch without optimistic update in `admin-ui/src/features/users/hooks/use-users-mutations.ts`.
+- [ ] T031 [CORE] **Gate 5**: rerun focused server auth tests; validate five states, page reset, cancel/confirm, guest/host persistence, hidden admin actions, direct self/other-admin 403; run admin-ui lint/build and log results.
 
-**Goal**: Moderation mutations preserve existing domain safety and reject invalid/stale KYC reviews.
+## Phase 6 — Properties and License Vertical Slice
 
-- [ ] T009 [P] [P1] [US4] Enforce the approved activation prerequisites in `server/src/modules/listings/application/use-cases/update-property-status-admin.usecase.ts` using `checkHostKycVerified` and `findVerifiedLicenseByPropertyId` from `server/src/modules/listings/domain/repositories/listings.repository.ts`, and reuse errors from `server/src/modules/listings/domain/errors/listings.errors.ts`; keep paused/archived contract unchanged.
-- [ ] T010 [P1] [US4] Immediately add focused activation tests to `server/src/modules/listings/application/use-cases/listings.usecases.spec.ts` for verified host/no-required-license success, unverified host failure, required-license missing/unverified failure, verified-license success, and no repository status update on failure.
-- [ ] T011 [P] [P1] [US5] Add explicit blank rejection-reason and already-reviewed document errors in `server/src/modules/kyc/domain/errors/kyc.errors.ts`; enforce trimmed non-empty reason for reject and pending-only review in `server/src/modules/kyc/application/use-cases/review-kyc.usecase.ts`; align DTO validation in `server/src/modules/kyc/presentation/requests/review-kyc.request.ts` without accepting reviewer identity from the body.
-- [ ] T012 [P1] [US5] Immediately extend `server/src/modules/kyc/application/use-cases/review-kyc.usecase.spec.ts` with approve-pending success, reject-with-reason success, blank/whitespace reason failure, already-verified/rejected conflict, reviewer persistence, and no writes on failure.
-- [ ] T013 [P1] [US4] Add admin/no-token/guest/host authorization coverage for property list, license and status routes in the new exact file `server/src/modules/listings/presentation/controllers/admin-listings.controller.spec.ts`, without altering contracts in `server/src/modules/listings/presentation/controllers/admin-listings.controller.ts`.
-- [ ] T014 [P] [P1] [US5] Add admin/no-token/guest/host authorization coverage for pending/review KYC routes in the new exact file `server/src/modules/kyc/presentation/controllers/admin-kyc.controller.spec.ts`, without altering contracts in `server/src/modules/kyc/presentation/controllers/admin-kyc.controller.ts`.
-- [ ] T015 [P1] [CORE] Run focused listing and KYC tests from T010, T012–T014, then run `npm test -- --runInBand`, `npm run lint`, and `npm run build` in `server`; append results to `specs/001-admin-demo-readiness/quickstart.md` and fix failures before frontend work.
+- [ ] T032 [P] [US4] Synchronize filters/pagination and error classification in `admin-ui/src/features/properties/services/properties-service.ts`, `admin-ui/src/features/properties/types.ts`, `admin-ui/src/features/properties/hooks/use-properties-queries.ts`, `admin-ui/src/features/properties/components/properties-filter-bar.tsx`, and `admin-ui/src/app/(dashboard)/properties/components/properties-management-container.tsx`.
+- [ ] T033 [P] [US4] Separate five list states in `admin-ui/src/features/properties/components/properties-table.tsx` and wire state/refetch through `admin-ui/src/app/(dashboard)/properties/components/properties-management-container.tsx`.
+- [ ] T034 [P] [US4] Complete license loading/no-license/error+retry/unauthorized/success/broken-URL states in `admin-ui/src/features/properties/components/property-license-drawer.tsx`; do not add license approval.
+- [ ] T035 [US4] Create `admin-ui/src/features/properties/components/property-status-confirmation-dialog.tsx` with `admin-ui/src/components/ui/dialog.tsx` and wire through `admin-ui/src/features/properties/components/property-actions-menu.tsx`, `admin-ui/src/features/properties/components/properties-table.tsx`, and `admin-ui/src/app/(dashboard)/properties/components/properties-management-container.tsx`.
+- [ ] T036 [US4] Add pending lock, backend prerequisite messages, success invalidation, and stale refetch without optimistic update in `admin-ui/src/features/properties/hooks/use-properties-mutations.ts`.
+- [ ] T037 [CORE] **Gate 6**: rerun focused listing tests; validate list/license states, page reset, confirmation, persistence, and blocked activation whenever either prerequisite is missing—including `requiresLocalLicense=false`; run lint/build in `server` and `admin-ui`, logging results.
 
-## Phase 4: Admin Authentication Shell
+## Phase 7 — KYC Vertical Slice
 
-**Goal**: Chỉ render Admin content sau khi xác thực role hoàn tất và phân biệt đúng 401/403.
+- [ ] T038 [P] [US5] Expose retry/refetch/error classification from `admin-ui/src/features/kyc/hooks/use-kyc-queries.ts` and `admin-ui/src/features/kyc/services/kyc-service.ts`; separate five states in `admin-ui/src/features/kyc/components/kyc-documents-table.tsx`.
+- [ ] T039 [US5] Add approve confirmation with document/account identity and pending lock in `admin-ui/src/features/kyc/components/kyc-review-dialog.tsx` and `admin-ui/src/app/(dashboard)/kyc/components/kyc-queue-container.tsx`.
+- [ ] T040 [US5] Trim/validate rejection reason, preserve it through final confirmation, and lock pending actions in `admin-ui/src/features/kyc/components/kyc-rejection-dialog.tsx` and `admin-ui/src/app/(dashboard)/kyc/components/kyc-queue-container.tsx`.
+- [ ] T041 [US5] Add backend-message toast, queue invalidation, and stale/conflict refetch in `admin-ui/src/features/kyc/hooks/use-kyc-mutations.ts`; remove unrelated balance invalidation and do not modify `server/src/modules/kyc/infrastructure/providers/mock-kyc-provider.ts`.
+- [ ] T042 [CORE] **Gate 7**: rerun focused KYC tests; validate five states, approve/reject cancel+confirm, blank rejection, conflict, and persisted refresh; run lint/build in `server` and `admin-ui`, logging results.
 
-- [ ] T016 [P1] [US1] Normalize session clearing and current-user refresh behavior in `admin-ui/src/features/auth/store/use-auth-store.ts`, `admin-ui/src/features/auth/hooks/use-auth-queries.ts`, `admin-ui/src/features/auth/hooks/use-auth-mutations.ts`, and `admin-ui/src/lib/api/api-client.ts`, ensuring 401 clears token/user state while 403 preserves authentication for an access-denied state.
-- [ ] T017 [P1] [US1] Complete login loading/error/admin-role handling without changing the existing API in `admin-ui/src/app/login/page.tsx`, `admin-ui/src/features/auth/services/auth-service.ts`, and `admin-ui/src/features/auth/types.ts`; guest/host login must not enter the dashboard.
-- [ ] T018 [P1] [US1] Prevent protected-content flash and render explicit verifying/unauthenticated/unauthorized states in `admin-ui/src/app/(dashboard)/layout.tsx`; remove out-of-scope Bookings and Ledger navigation items while keeping Overview, Users, Properties and KYC.
-- [ ] T019 [P1] [CORE] Validate login as admin, guest and host plus expired-token handling against the real API, then run `npm run lint` and `npm run build` in `admin-ui`; record results in `specs/001-admin-demo-readiness/quickstart.md`.
+## Phase 8 — Integrated Demo and Final Gate
 
-## Phase 5: Real Overview Dashboard
+- [ ] T043 [CORE] Prepare persisted data through existing seed/database workflow: two admins, guest, host, verified/unverified KYC, verified/missing/unverified licenses including `requiresLocalLicense=false`, pending KYC, and platform/revenue/VND ledger; no UI fixtures or migrations.
+- [ ] T044 [CORE] Verify implementation against `specs/001-admin-demo-readiness/contracts/admin-api.openapi.yaml`; run no-token/invalid/admin/guest/host authorization matrix for all admin routes and confirm the generic ledger contract remains unchanged.
+- [ ] T045 [CORE] Execute quickstart real-data flow: login → four Overview values/shortcuts → Users mutation → Properties/license/activation → KYC approve/reject; reload after successful mutations and record evidence.
+- [ ] T046 [CORE] Run targeted guest/host regression checks and search `admin-ui/src` for mock/hard-coded Admin records; document environment-only omissions with cause/impact.
+- [ ] T047 [CORE] **Gate 8**: run server test/lint/build and e2e when available, plus admin-ui lint/build; record exact results, final Constitution Check, and release decision in quickstart. Authorization, activation-prerequisite, mock-data, or build failures cannot be waived.
 
-**Goal**: Dashboard demo dùng dữ liệu thật, không có KPI/booking mock.
-
-- [ ] T020 [P1] [US2] Align the platform balance client route and response type with T002 in `admin-ui/src/features/ledger/services/ledger-service.ts` and `admin-ui/src/features/ledger/hooks/use-ledger-queries.ts`; remove the fabricated `{ balanceCents: 0 }` error/empty fallback and preserve currency.
-- [ ] T021 [P1] [US2] Remove `mockRecentBookings`, hard-coded KPIs and out-of-scope Meilisearch control from `admin-ui/src/app/(dashboard)/components/overview-dashboard-container.tsx`; render only real platform balance and working shortcuts to `/users`, `/properties`, and `/kyc`.
-- [ ] T022 [P1] [US2] Implement distinct loading, missing-balance/empty, error with retry, unauthorized, and success rendering in `admin-ui/src/app/(dashboard)/components/overview-dashboard-container.tsx`, using the query state exposed by `admin-ui/src/features/ledger/hooks/use-ledger-queries.ts`.
-- [ ] T023 [P1] [CORE] Exercise all five Overview states and verify no `mock`, hard-coded business records, or recent-booking fixture remains in `admin-ui/src/app/(dashboard)/components/overview-dashboard-container.tsx`; run `npm run lint` and `npm run build` in `admin-ui` and log results in `specs/001-admin-demo-readiness/quickstart.md`.
-
-## Phase 6: Users Minimum Demo Slice
-
-**Goal**: Search/filter và account status mutation hoạt động end-to-end với confirmation và admin-target protection.
-
-- [ ] T024 [P] [P1] [US3] Keep query/filter pagination synchronized and expose retry/refetch/error classification in `admin-ui/src/features/users/hooks/use-users-queries.ts`, `admin-ui/src/features/users/services/users-service.ts`, `admin-ui/src/features/users/types.ts`, and `admin-ui/src/features/users/components/users-filter-bar.tsx`; every search/role/status change must reset page to 1.
-- [ ] T025 [P] [P1] [US3] Separate loading, empty, error with retry, unauthorized and success table states in `admin-ui/src/features/users/components/users-table.tsx` and wire callbacks/query state through `admin-ui/src/app/(dashboard)/users/components/users-management-container.tsx`.
-- [ ] T026 [P1] [US3] Hide or disable all status actions for `user.role === 'admin'` in `admin-ui/src/features/users/components/user-actions-menu.tsx`, while retaining guest/host actions.
-- [ ] T027 [P1] [US3] Add the new exact confirmation component `admin-ui/src/features/users/components/user-status-confirmation-dialog.tsx` using existing `admin-ui/src/components/ui/dialog.tsx`, and route status selection through confirmation in `admin-ui/src/app/(dashboard)/users/components/users-management-container.tsx` and `admin-ui/src/features/users/components/users-table.tsx`.
-- [ ] T028 [P1] [US3] Ensure pending lock, success/error toast, success invalidation, and stale-error refetch in `admin-ui/src/features/users/hooks/use-users-mutations.ts`; surface the backend 403 message for protected admin targets instead of a generic success assumption.
-- [ ] T029 [P1] [CORE] Validate Users loading/empty/error/unauthorized/success, search/filter page reset, cancel/confirm behavior, guest/host persisted update, hidden admin action, and direct own/other-admin API 403; then run `npm run lint` and `npm run build` in `admin-ui` and log results in `specs/001-admin-demo-readiness/quickstart.md`.
-
-## Phase 7: Properties and License Minimum Demo Slice
-
-**Goal**: Search/filter, license read và property status mutation hoạt động với domain-safe confirmation.
-
-- [ ] T030 [P] [P1] [US4] Keep query/filter pagination synchronized and expose retry/refetch/error classification in `admin-ui/src/features/properties/hooks/use-properties-queries.ts`, `admin-ui/src/features/properties/services/properties-service.ts`, `admin-ui/src/features/properties/types.ts`, and `admin-ui/src/features/properties/components/properties-filter-bar.tsx`; every search/status/host change must reset page to 1.
-- [ ] T031 [P] [P1] [US4] Separate loading, empty, error with retry, unauthorized and success table states in `admin-ui/src/features/properties/components/properties-table.tsx` and wire query state through `admin-ui/src/app/(dashboard)/properties/components/properties-management-container.tsx`.
-- [ ] T032 [P] [P1] [US4] Complete license loading, no-license empty, fetch error with retry, unauthorized, success, and broken/missing-document handling in `admin-ui/src/features/properties/components/property-license-drawer.tsx` using `admin-ui/src/features/properties/hooks/use-properties-queries.ts`; do not add license approval.
-- [ ] T033 [P1] [US4] Add the new exact confirmation component `admin-ui/src/features/properties/components/property-status-confirmation-dialog.tsx` using existing `admin-ui/src/components/ui/dialog.tsx`, and route actions through it from `admin-ui/src/features/properties/components/property-actions-menu.tsx`, `admin-ui/src/features/properties/components/properties-table.tsx`, and `admin-ui/src/app/(dashboard)/properties/components/properties-management-container.tsx`.
-- [ ] T034 [P1] [US4] Ensure pending lock, success/error toast, success invalidation and stale-error refetch in `admin-ui/src/features/properties/hooks/use-properties-mutations.ts`; show backend KYC/license prerequisite messages and do not optimistic-update.
-- [ ] T035 [P1] [CORE] Validate Properties loading/empty/error/unauthorized/success, filter page reset, license success/empty/error, cancel/confirm behavior, persisted status refresh, and blocked activation prerequisites; then run relevant server property tests plus `npm run lint` and `npm run build` in `admin-ui`, logging results in `specs/001-admin-demo-readiness/quickstart.md`.
-
-## Phase 8: KYC Minimum Demo Slice
-
-**Goal**: Pending queue review hoạt động với confirmation, rejection reason và stale-data recovery.
-
-- [ ] T036 [P] [P1] [US5] Expose retry/refetch and error classification from `admin-ui/src/features/kyc/hooks/use-kyc-queries.ts` and `admin-ui/src/features/kyc/services/kyc-service.ts`, then separate loading, empty, error with retry, unauthorized and success states in `admin-ui/src/features/kyc/components/kyc-documents-table.tsx`.
-- [ ] T037 [P1] [US5] Change approve from direct mutation to explicit confirmation in `admin-ui/src/features/kyc/components/kyc-review-dialog.tsx` and `admin-ui/src/app/(dashboard)/kyc/components/kyc-queue-container.tsx`; show document/account identity and disable actions while pending.
-- [ ] T038 [P1] [US5] Trim and validate non-empty rejection reason, add the final confirmation step, and preserve the typed reason in `admin-ui/src/features/kyc/components/kyc-rejection-dialog.tsx` and `admin-ui/src/app/(dashboard)/kyc/components/kyc-queue-container.tsx`.
-- [ ] T039 [P1] [US5] Ensure success/error toast, pending queue invalidation and stale/conflict refetch in `admin-ui/src/features/kyc/hooks/use-kyc-mutations.ts`; remove the unrelated/incorrect platform-balance invalidation and surface backend business messages.
-- [ ] T040 [P1] [CORE] Validate KYC loading/empty/error/unauthorized/success, approve cancel/confirm, blank reject prevention, reject cancel/confirm with persisted reason, duplicate-review conflict and queue refresh; then run relevant server KYC tests plus `npm run lint` and `npm run build` in `admin-ui`, logging results in `specs/001-admin-demo-readiness/quickstart.md`.
-
-## Phase 9: Final Integration and Demo Gate
-
-**Goal**: Chứng minh minimum demo hoạt động, builds thành công và không regression nghiêm trọng.
-
-- [ ] T041 [P1] [CORE] Verify the implemented endpoints still match `specs/001-admin-demo-readiness/contracts/admin-api.openapi.yaml`; update only the documentation if the compatibility-safe route chosen in T001 differs, and do not broaden scope.
-- [ ] T042 [P1] [CORE] Run the complete server validation in `server`: `npm test -- --runInBand`, `npm run lint`, `npm run build`, and `npm run test:e2e` when the documented environment is available; record exact commands, results and any environment-only omission in `specs/001-admin-demo-readiness/quickstart.md`.
-- [ ] T043 [P1] [CORE] Run final frontend validation in `admin-ui`: `npm run lint` and `npm run build`; resolve all feature-caused errors and record exact results in `specs/001-admin-demo-readiness/quickstart.md`.
-- [ ] T044 [P1] [CORE] Execute the documented authorization matrix and main demo smoke test in `specs/001-admin-demo-readiness/quickstart.md` against real APIs/data: admin login → Overview balance → Users search/filter/status → Properties search/filter/license/status → KYC approve/reject; reload after each mutation and record pass/fail evidence in that file.
-- [ ] T045 [P1] [CORE] Run targeted guest/host regression smoke checks for shared auth/listing contracts and verify no Admin production mock records remain by inspecting `admin-ui/src/app/(dashboard)/components/overview-dashboard-container.tsx` and searching `admin-ui/src` for demo fixtures; document the final release decision in `specs/001-admin-demo-readiness/quickstart.md`.
-
-## Dependencies and Execution Order
+## Dependencies
 
 ```text
-T001 → T002 → T003 → T004
-                  ↓
-T005 → T006 → T007 → T008
-                  ↓
-       ┌──────────┴──────────┐
-       T009 → T010 → T013    T011 → T012 → T014
-       └──────────┬──────────┘
-                  T015
-                   ↓
-          T016 → T017 → T018 → T019
-                   ↓
-          T020 → T021 → T022 → T023
-                   ↓
-       ┌───────────┼───────────┐
-       T024–T029   T030–T035   T036–T040
-       └───────────┼───────────┘
-                   ↓
-          T041 → T042 → T043 → T044 → T045
+T001–T006 → T007–T016 → T017–T020 → T021–T025
+                                      ↓
+                    T026–T031 | T032–T037 | T038–T042
+                                      ↓
+                                  T043–T047
 ```
 
-- Backend phases 1–3 MUST finish before frontend mutation work.
-- After T023, the Users, Properties and KYC slices can be assigned independently; within each slice, preserve its listed order except tasks marked `[P]` that touch distinct files.
-- T041–T045 are sequential final gates. A failed authorization test or build blocks the demo handoff.
-
-## Minimum Demo Definition
-
-All tasks are `[P1]`. The minimum demo is complete only when T001–T045 are checked and Phase 9 passes. There are intentionally no P2/P3 tasks because optional polish and new features are outside the approved scope.
-
+- Every phase gate must pass before the next phase begins.
+- Phase 2 module tracks and Phase 5–7 UI slices may run in parallel only where `[P]` tasks do not overlap files.
+- Completion requires T001–T047 checked and every gate recorded in `specs/001-admin-demo-readiness/quickstart.md`.

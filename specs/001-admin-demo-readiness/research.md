@@ -14,13 +14,13 @@
 
 ## Decision 3: Preserve general ledger compatibility
 
-**Decision**: Xác minh consumer của `/ledger/accounts/balance`; ưu tiên admin-specific read endpoint cho platform revenue nếu general endpoint phục vụ guest/host.  
+**Decision**: Chọn `GET /admin/ledger/platform-balance` làm endpoint admin-only cho platform revenue balance và bảo vệ endpoint bằng `@Authorize('admin')`.
 **Rationale**: Biến general balance API thành admin-only có thể phá contract hiện có. Admin-specific controller có thể reuse `GetBalanceUseCase` và fixed selector `platform/revenue/VND`.  
 **Alternatives rejected**: UI gửi arbitrary owner selector trên endpoint không bảo vệ; khóa toàn ledger module mà không audit consumer.
 
 ## Decision 4: No mock dashboard data
 
-**Decision**: Dashboard chỉ hiển thị platform balance thật và những counts lấy được từ list APIs hiện có; loại recent bookings/hard-coded KPI.  
+**Decision**: Dashboard chỉ hiển thị platform balance thật, total users, total properties, pending KYC count từ API thật và navigation shortcuts; loại recent bookings, hard-coded KPI và mọi KPI khác.
 **Rationale**: Spec cấm mock data và không bao gồm booking management. `total` từ APIs danh sách có thể cung cấp counts mà không cần analytics subsystem.  
 **Alternatives rejected**: Giữ placeholder demo; tạo analytics API mới không cần thiết.
 
@@ -38,14 +38,22 @@
 
 ## Decision 7: Property activation follows publish prerequisites
 
-**Decision**: Tạm thời plan activation yêu cầu host KYC verified và verified license nếu `requiresLocalLicense`.  
-**Rationale**: Đây là rule domain hiện có trong `Property.publish`; admin override không nên vô hiệu hóa an toàn nghiệp vụ nếu chưa có quyết định product rõ ràng.  
+**Decision**: Activation luôn yêu cầu host KYC `verified` và license của property `verified`, kể cả khi `requiresLocalLicense` là false. Admin không được override điều kiện nào.
+**Rationale**: Đây là quyết định product đã xác nhận cho moderation activation; admin status mutation phải enforce cả hai invariant trước persistence.
 **Alternatives rejected**: Giữ unconditional repository status update.  
-**Open dependency**: Product có thể thay đổi quyết định này; cần amend spec/plan trước implementation nếu cho phép override.
 
 ## Decision 8: KYC provider mock is not part of Admin UI data mocking
 
 **Decision**: Không thay provider KYC trong feature này; admin queue/review phải đọc và ghi submissions persisted qua API thật.  
 **Rationale**: Thay external KYC provider là scope lớn khác; yêu cầu “không mock data” áp dụng trực tiếp cho Admin screens/demo records.  
 **Alternatives rejected**: Tích hợp vendor KYC mới trong demo-readiness feature.
+
+## Decision 9: UI state matrices are flow-specific
+
+**Decision**: Data screens require loading, empty, error, unauthorized and success. Login instead requires idle, loading, validation error, authentication error, unauthorized and success redirect, with no empty state.
+**Rationale**: Empty has meaning for a data result set, not an authentication form; validation, credential failure and role denial are distinct observable login outcomes.
+
+## Reinspection after latest origin/main rebase
+
+Reinspection at `ba924ea` over `origin/main` `fcf558d` confirmed the current code still contains unconditional admin property status updates, unconditional account status updates, mock dashboard KPIs/recent bookings, and existing auth/data feature slices. The implementation plan and tasks below target these current paths rather than the pre-rebase inventory.
 

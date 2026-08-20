@@ -10,6 +10,10 @@
 ### Session 2026-08-20
 
 - Q: Admin có được thay đổi trạng thái tài khoản role `admin`, gồm chính mình hoặc admin khác không? → A: Không. Chỉ tài khoản role `guest` hoặc `host` được phép đổi trạng thái. Backend phải trả `403 Forbidden` với thông báo rõ ràng cho mọi yêu cầu đổi trạng thái tài khoản admin. Frontend ẩn hoặc disable hành động này, nhưng backend là lớp quyết định. Không bổ sung role `superadmin`.
+- Q: Admin có được bypass KYC hoặc license khi activate property không? → A: Không. Mọi property chỉ được chuyển sang `active` khi host KYC đã `verified` và chính property có license `verified`; hai điều kiện luôn bắt buộc, không phụ thuộc `requiresLocalLicense` và không có admin override.
+- Q: Dashboard được phép hiển thị dữ liệu nào? → A: Chỉ platform balance thật, total users, total properties, pending KYC count lấy từ API thật, và navigation shortcuts. Loại bỏ mọi mock KPI và recent bookings.
+- Q: Các state UI bắt buộc áp dụng thế nào? → A: Mọi màn hình/vùng dữ liệu phải có loading, empty, error, unauthorized và success. Riêng login có idle, loading, validation error, authentication error, unauthorized và success redirect; login không có empty state.
+- Q: Sau rebase cần dựa trên code nào? → A: Reinspect code tại branch hiện tại sau latest `origin/main` rebase trước khi chốt plan/tasks; không dựa trên inventory cũ.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -33,7 +37,7 @@ Là quản trị viên, tôi đăng nhập bằng tài khoản có role `admin` 
 
 ### User Story 2 - View Operational Overview and Platform Balance (Priority: P1)
 
-Là quản trị viên đã đăng nhập, tôi xem dashboard tổng quan với dữ liệu thật cần thiết cho demo, bao gồm platform ledger balance và các lối tắt đến Users, Properties, KYC.
+Là quản trị viên đã đăng nhập, tôi xem dashboard tổng quan với platform ledger balance, total users, total properties, pending KYC count từ API thật và các lối tắt đến Users, Properties, KYC.
 
 **Why this priority**: Dashboard là màn hình đầu tiên của luồng demo và platform balance là một yêu cầu nghiệp vụ cụ thể.
 
@@ -46,6 +50,7 @@ Là quản trị viên đã đăng nhập, tôi xem dashboard tổng quan với 
 3. **Given** chưa có platform ledger account hoặc chưa có dữ liệu tổng quan, **When** API trả kết quả rỗng hợp lệ, **Then** dashboard hiển thị empty/unavailable state rõ ràng và không tự tạo số liệu mẫu.
 4. **Given** API tổng quan hoặc balance lỗi, **When** dashboard nhận lỗi, **Then** hiển thị error state và hành động thử lại mà không làm hỏng toàn trang.
 5. **Given** admin xem dashboard thành công, **When** chọn lối tắt Users, Properties hoặc KYC, **Then** được điều hướng đúng đến màn hình tương ứng.
+6. **Given** các API danh sách trả dữ liệu, **When** dashboard render thành công, **Then** total users, total properties và pending KYC count khớp metadata/kết quả API thật; không hiển thị KPI nào khác hoặc recent bookings.
 
 ---
 
@@ -87,6 +92,7 @@ Là quản trị viên, tôi xem, tìm kiếm và lọc properties, xem giấy p
 5. **Given** property chưa nộp giấy phép, **When** admin mở phần giấy phép, **Then** hiển thị empty state rõ ràng, không coi đó là runtime error.
 6. **Given** admin chọn trạng thái mới, **When** chưa xác nhận hoặc hủy, **Then** không gửi mutation và không đổi trạng thái.
 7. **Given** admin xác nhận thay đổi, **When** backend cập nhật thành công, **Then** có thông báo thành công và dữ liệu property được refresh/invalidate đúng; nếu thất bại, có thông báo lỗi và giữ dữ liệu nhất quán.
+8. **Given** host KYC chưa verified hoặc property chưa có license verified, **When** admin cố activate property, **Then** backend từ chối và không đổi trạng thái; admin không thể bypass bất kỳ prerequisite nào.
 
 ---
 
@@ -127,21 +133,22 @@ Là quản trị viên, tôi xem hàng đợi KYC, kiểm tra tài liệu và du
 - **FR-002**: Backend MUST xác thực JWT và kiểm tra role `admin` cho mọi API được Admin UI sử dụng để đọc hoặc mutate accounts, properties/license, KYC và platform ledger balance.
 - **FR-003**: Backend MUST trả 401 khi thiếu/sai/hết hạn xác thực và 403 khi tài khoản hợp lệ nhưng không có role admin, không kèm dữ liệu bảo vệ.
 - **FR-004**: Admin UI MUST xử lý phiên chưa khởi tạo, chưa đăng nhập, hết hạn và non-admin mà không thoáng render dữ liệu quản trị trước khi guard hoàn tất.
-- **FR-005**: Dashboard MUST hiển thị platform ledger balance từ API thật, gồm số dư và currency, và MUST không dùng hard-coded/mock KPI hoặc booking data.
-- **FR-006**: Dashboard MUST chỉ hiển thị các chỉ số tổng quan có nguồn API thật trong phạm vi hiện có; vùng không có API phù hợp MUST được loại bỏ hoặc thể hiện là unavailable, không được giả lập.
+- **FR-005**: Dashboard MUST chỉ hiển thị platform ledger balance, total users, total properties và pending KYC count từ API thật, cùng navigation shortcuts; balance MUST gồm số dư và currency.
+- **FR-006**: Dashboard MUST loại bỏ recent bookings, hard-coded/mock KPI, mọi KPI khác và simulated fallback; dữ liệu rỗng/lỗi MUST được thể hiện bằng state tương ứng, không bằng số liệu giả.
 - **FR-007**: Users MUST hỗ trợ danh sách phân trang, tìm kiếm theo email/tên, lọc role và lọc status bằng contract hiện có.
 - **FR-008**: Admin MUST chỉ có thể đổi account status của tài khoản role `guest` hoặc `host` trong tập giá trị backend hiện hỗ trợ; hành động MUST có confirmation hiển thị đối tượng và trạng thái đích.
 - **FR-008a**: Backend MUST từ chối mọi yêu cầu đổi trạng thái tài khoản role `admin`, bao gồm chính caller và admin khác, bằng `403 Forbidden` với thông báo rõ ràng; account status MUST không thay đổi.
 - **FR-008b**: Admin UI MUST ẩn hoặc disable hành động đổi trạng thái trên mọi tài khoản role `admin`, nhưng MUST không được coi biện pháp UI này là lớp bảo vệ quyết định.
 - **FR-009**: Properties MUST hỗ trợ danh sách phân trang, tìm kiếm theo title/city và lọc theo các tiêu chí contract hiện có mà UI đưa ra.
 - **FR-010**: Admin MUST xem được giấy phép property qua API thật; trường hợp chưa có giấy phép MUST được xử lý như empty state hợp lệ.
-- **FR-011**: Admin MUST có thể đổi property status trong tập chuyển trạng thái backend cho phép; hành động MUST có confirmation hiển thị property và trạng thái đích.
+- **FR-011**: Admin MUST có thể đổi property status trong tập chuyển trạng thái backend cho phép; hành động MUST có confirmation hiển thị property và trạng thái đích. Chuyển sang `active` MUST luôn yêu cầu host KYC `verified` và property license `verified`; admin MUST NOT bypass hai prerequisite này.
 - **FR-012**: KYC Queue MUST lấy các submission pending từ API thật và cho phép mở thông tin/tài liệu cần review.
 - **FR-013**: Approve KYC MUST yêu cầu confirmation trước khi gửi mutation.
 - **FR-014**: Reject KYC MUST yêu cầu lý do không rỗng và confirmation trước khi gửi; backend MUST lưu quyết định, reviewer và rejection reason theo domain hiện có.
 - **FR-015**: Mọi mutation MUST khóa hoặc vô hiệu hóa trigger liên quan trong khi request đang chạy, hiển thị thông báo success/error, và invalidate/refetch dữ liệu liên quan sau kết quả thành công.
 - **FR-016**: Với lỗi conflict/stale-data sau mutation, Admin UI MUST refresh dữ liệu liên quan để phản ánh trạng thái backend mới nhất.
-- **FR-017**: Mọi màn hình/vùng dữ liệu trong phạm vi MUST có biểu hiện loading, empty, error, unauthorized và success phù hợp; error state SHOULD có retry khi request có thể thử lại.
+- **FR-017**: Mọi màn hình/vùng dữ liệu trong phạm vi MUST có loading, empty, error, unauthorized và success phù hợp; error state SHOULD có retry khi request có thể thử lại.
+- **FR-017a**: Login MUST có idle, loading, validation error, authentication error, unauthorized và success redirect; login MUST NOT được yêu cầu hoặc hiển thị empty state.
 - **FR-018**: Search/filter MUST đặt pagination về trang đầu và MUST giữ UI đồng bộ với query đang hiển thị.
 - **FR-019**: Thay đổi MUST tận dụng module, feature, hook, service, component và API hiện có; MUST không xây lại Admin UI/server từ đầu.
 - **FR-020**: Production UI MUST không thêm mock data, hard-coded business records hoặc simulated API responses.
@@ -185,7 +192,7 @@ Là quản trị viên, tôi xem hàng đợi KYC, kiểm tra tài liệu và du
 - **SC-002**: 100% API quản trị trong phạm vi từ chối request không token và token guest/host; request admin hợp lệ nhận kết quả theo contract.
 - **SC-002a**: 100% yêu cầu đổi trạng thái tài khoản role `admin` bị backend từ chối bằng 403, không phụ thuộc caller là chính tài khoản đó hay admin khác; không có bản ghi admin nào bị thay đổi.
 - **SC-003**: 100% mutation trong phạm vi có confirmation trước request, feedback sau request, ngăn submit lặp trong khi pending và phản ánh dữ liệu persisted sau refresh/invalidation.
-- **SC-004**: 100% màn hình/vùng dữ liệu trong phạm vi có thể hiện rõ loading, empty, error, unauthorized và success qua kiểm thử có kiểm soát.
+- **SC-004**: 100% màn hình/vùng dữ liệu có loading, empty, error, unauthorized và success; riêng login có đủ idle, loading, validation error, authentication error, unauthorized và success redirect mà không có empty state.
 - **SC-005**: Không còn mock/hard-coded business records trên dashboard hoặc các màn hình quản trị trong phạm vi; dữ liệu trình diễn truy xuất từ API thật.
 - **SC-006**: Tìm kiếm/lọc trả đúng tập kết quả và trở về trang đầu trong tất cả kịch bản nghiệm thu Users và Properties.
 - **SC-007**: `admin-ui` và `server` build thành công; các lint/test áp dụng cho phần thay đổi không có lỗi chưa được giải trình.

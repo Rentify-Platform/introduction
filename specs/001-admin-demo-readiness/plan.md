@@ -5,7 +5,7 @@
 
 ## Summary
 
-Hoàn thiện vertical demo hiện có của Rentify Admin bằng cách gia cố phân quyền ở backend, bỏ dữ liệu mock trên dashboard, hoàn thiện state/confirmation/refresh của các feature Users, Properties và KYC, rồi xác nhận platform ledger balance từ API thật. Giữ nguyên monorepo, module và API contract hiện có; chỉ mở rộng contract khi cần biểu đạt đúng lỗi 401/403 hoặc bảo vệ platform balance.
+Hoàn thiện vertical demo hiện có của Rentify Admin bằng cách gia cố phân quyền ở backend, thêm boundary ledger admin-only nhỏ nhất, thay Overview bằng đúng platform balance, total users, total properties và pending KYC count từ API thật, rồi hoàn thiện state/confirmation/refresh của Users, Properties và KYC. Property activation luôn giữ cả verified host KYC và verified property license; không migration, dependency, rewrite hay tính năng ngoài phạm vi.
 
 ## Technical Context
 
@@ -18,6 +18,8 @@ Hoàn thiện vertical demo hiện có của Rentify Admin bằng cách gia cố
 **Performance Goals**: Các thao tác search/filter/mutation phản hồi trạng thái ngay; không tạo request mutation trùng từ một trigger; pagination giữ giới hạn hiện có 20 bản ghi mặc định  
 **Constraints**: Không mock production data, không dependency mới, không rewrite, giữ contract guest/host, mọi admin API enforce role ở server  
 **Scale/Scope**: 4 màn hình Admin chính (Overview, Users, Properties, KYC), 1 login flow, 4 nhóm API bảo vệ
+
+**Rebase baseline**: Kế hoạch được reinspect trên `HEAD ba924ea`, ngay trên `origin/main fcf558d`. Các target dưới đây khớp tree hiện tại; file ghi là “tạo” chưa tồn tại, các file còn lại đã được kiểm tra tồn tại sau rebase.
 
 ## Constitution Check
 
@@ -34,7 +36,7 @@ Hoàn thiện vertical demo hiện có của Rentify Admin bằng cách gia cố
 
 ### Post-design gate
 
-PASS với một giả định cần xác nhận: activation property không bypass điều kiện host KYC và verified license khi property yêu cầu license. Nếu product quyết định cho phép override, spec phải được clarify/amend trước implementation; không tự mở rộng quyền trong code.
+PASS sau clarification: activation property luôn yêu cầu host KYC verified và property license verified; admin không bypass và `requiresLocalLicense` không làm điều kiện license trở thành tùy chọn.
 
 ## Project Structure
 
@@ -90,82 +92,88 @@ server/src/
 
 ## Implementation Phases
 
-### Phase 1 — Backend authorization and invariant hardening
+### Phase 1 — Small admin-only ledger boundary
 
-1. Bảo vệ endpoint đọc platform revenue balance dùng cho Admin UI bằng role `admin`; ưu tiên endpoint admin-specific hoặc decorator rõ ràng mà không làm mất quyền của ledger endpoint dùng cho guest/host. Không biến toàn bộ ledger API thành admin-only nếu contract khác đang dùng nó.
-2. Thêm domain/application error dành cho mutation nhắm đến account role `admin`; `UpdateAccountStatusUseCase` kiểm tra target sau `findById`, trả 403 qua exception mapping và không gọi repository update.
-3. Validate rejection reason ở backend khi action là `reject`: trim, yêu cầu không rỗng (và giữ giới hạn hợp lý theo DTO/domain); không dùng fallback reason ngầm cho admin rejection.
-4. Với property activation, tái sử dụng repository checks `checkHostKycVerified` và `findVerifiedLicenseByPropertyId`, áp dụng rule publish hiện có trước update status. Pause/archive giữ contract admin hiện hữu.
-5. Thêm/điều chỉnh unit và HTTP authorization tests cho admin success, missing token 401, guest/host 403, admin-target account mutation 403 và không persistence, KYC reject reason invalid, property activation prerequisite.
+**Current evidence**: Sau rebase, chỉ `admin-ui/src/features/ledger/services/ledger-service.ts` gọi `/ledger/accounts/balance`. Route tổng quát trong `server/src/modules/ledger/presentation/controllers/ledger.controller.ts` nhận selector tùy ý và chỉ dùng `JwtAuthGuard`; thay đổi authorization của route này có rủi ro contract dùng chung.
 
-**Gate**: targeted Jest tests → `npm test -- --runInBand` → `npm run lint` → `npm run build` trong `server`.
+1. Tạo `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.ts` với `@Controller('admin/ledger')`, `@UseGuards(JwtAuthGuard)`, `@Authorize('admin')` và `GET platform-balance`. Controller không nhận owner/query selector từ client; luôn tạo `GetBalanceCommand(null, 'platform', null, 'revenue', 'VND')`, reuse `GetBalanceUseCase`, `LedgerMapper` và `ApiResponse` hiện có.
+2. Đăng ký controller mới trong `server/src/modules/ledger/ledger.module.ts`. Không sửa behavior của `server/src/modules/ledger/presentation/controllers/ledger.controller.ts`, `GetBalanceUseCase`, repository hay schema.
+3. Tạo `server/src/modules/ledger/presentation/controllers/admin-ledger.controller.spec.ts` để kiểm tra fixed selector, admin success, no-token 401, guest 403 và host 403. Giữ `server/src/modules/ledger/application/use-cases/get-balance.usecase.spec.ts` làm regression cho use case dùng chung.
+4. Đồng bộ route/response được chốt trong `specs/001-admin-demo-readiness/contracts/admin-api.openapi.yaml` và ghi consumer evidence vào `specs/001-admin-demo-readiness/research.md`.
 
-### Phase 2 — Authentication shell and API error semantics
+**Gate 1**: chạy targeted ledger controller/use-case tests, sau đó trong `server` chạy `npm test -- --runInBand`, `npm run lint`, `npm run build`; khi môi trường HTTP sẵn có chạy `npm run test:e2e`. Ghi command/kết quả vào `specs/001-admin-demo-readiness/quickstart.md`; bất kỳ failure authorization nào chặn Phase 2.
 
-1. Giữ login service/store hiện có; chuẩn hóa xử lý 401 để xóa toàn bộ auth state liên quan và điều hướng login, 403 để hiển thị access denied mà không coi là token hết hạn.
-2. Dashboard layout không render children trước khi session/role verification hoàn tất; non-admin nhận unauthorized state/redirect có thông báo thay vì `null` vô nghĩa.
-3. Giới hạn navigation đúng phạm vi demo: Overview, Users, Properties, KYC. Loại hoặc ẩn Bookings/Ledger links chưa có screen trong scope; balance nằm trên Overview.
-4. Bổ sung reusable error classification/state primitives chỉ khi chúng được dùng lặp lại.
+### Phase 2 — Backend moderation invariants
 
-**Gate**: targeted login/guard checks → `npm run lint` → `npm run build` trong `admin-ui`.
+1. Trong `server/src/modules/auth/domain/errors/auth.errors.ts`, thêm business exception HTTP 403 cho target role admin. Trong `server/src/modules/auth/application/use-cases/update-account-status.usecase.ts`, kiểm tra account sau `findById`; chỉ `guest`/`host` được gọi `updateStatus`, mọi admin target—including caller hiện tại và admin khác—bị từ chối trước persistence.
+2. Tạo `server/src/modules/auth/application/use-cases/update-account-status.usecase.spec.ts` cho guest/host success, self-admin 403, other-admin 403, not-found và `updateStatus` không được gọi khi target là admin. Tạo `server/src/modules/auth/presentation/controllers/admin-accounts.controller.spec.ts` cho no-token/admin/guest/host route behavior mà không đổi `server/src/modules/auth/presentation/controllers/admin-accounts.controller.ts` contract.
+3. Trong `server/src/modules/listings/application/use-cases/update-property-status-admin.usecase.ts`, khi target là `active`, luôn gọi `checkHostKycVerified(property.hostId)` và `findVerifiedLicenseByPropertyId(property.id)`. Reuse `HostNotVerifiedException` và `PropertyLicenseRequiredException` từ `server/src/modules/listings/domain/errors/listings.errors.ts`; license `verified` và host KYC verified đều bắt buộc kể cả `property.requiresLocalLicense === false`. Không có admin bypass; `paused`/`archived` giữ behavior hiện tại.
+4. Mở rộng `server/src/modules/listings/application/use-cases/listings.usecases.spec.ts` với success khi cả hai prerequisite verified, failure cho unverified host, missing/unverified license ở cả hai giá trị `requiresLocalLicense`, và assertion không gọi `updatePropertyStatus` khi failure. Tạo `server/src/modules/listings/presentation/controllers/admin-listings.controller.spec.ts` cho admin/no-token/guest/host trên list/license/status.
+5. Trong `server/src/modules/kyc/domain/errors/kyc.errors.ts`, thêm lỗi reason blank và document không còn pending. Enforce trim/non-empty reject reason và pending-only review trong `server/src/modules/kyc/application/use-cases/review-kyc.usecase.ts`; align transport validation trong `server/src/modules/kyc/presentation/requests/review-kyc.request.ts`, không nhận reviewer từ body.
+6. Mở rộng `server/src/modules/kyc/application/use-cases/review-kyc.usecase.spec.ts`; tạo `server/src/modules/kyc/presentation/controllers/admin-kyc.controller.spec.ts` cho approve/reject success, blank reason, stale review, reviewer persistence, no-write failures và admin/no-token/guest/host authorization.
 
-### Phase 3 — Real overview dashboard
+**Gate 2**: chạy targeted auth/listings/KYC tests, sau đó `npm test -- --runInBand`, `npm run lint`, `npm run build` trong `server`; chạy `npm run test:e2e` khi hạ tầng sẵn có. Ghi kết quả vào quickstart; KYC/license prerequisite hoặc admin-target test failure chặn frontend phases.
 
-1. Giữ query platform balance hiện có nhưng align type với response thực (`balanceCents`, `currency`, account metadata nếu có); không fallback lỗi/rỗng thành balance 0.
-2. Xóa `mockRecentBookings` và các hard-coded KPIs. Chỉ hiển thị platform balance thật và navigation shortcuts; có thể dùng counts từ list APIs hiện có với `limit=1` nếu không thay contract và giá trị `total` đáng tin cậy.
-3. Hoàn thiện loading, empty/unavailable, error + retry, unauthorized và success states cho từng vùng dữ liệu.
-4. Loại nút Sync Meilisearch khỏi overview nếu không cần cho luồng demo trong spec.
+### Phase 3 — Authentication shell and navigation
 
-**Gate**: kiểm thử có kiểm soát 5 trạng thái + `npm run lint` + `npm run build` trong `admin-ui`.
+1. Chuẩn hóa 401/403 trong `admin-ui/src/lib/api/api-client.ts`, `admin-ui/src/features/auth/store/use-auth-store.ts`, `admin-ui/src/features/auth/hooks/use-auth-queries.ts` và `admin-ui/src/features/auth/hooks/use-auth-mutations.ts`: 401 xóa token/user và quay về login; 403 giữ session để render access denied.
+2. Trong `admin-ui/src/app/login/page.tsx`, biểu diễn riêng idle, loading, validation error, authentication error, unauthorized và success redirect; login không có empty state và guest/host không được vào dashboard.
+3. Trong `admin-ui/src/app/(dashboard)/layout.tsx`, không render protected children trước session/role resolution, thay `return null` bằng unauthorized state, và giới hạn `NAV_ITEMS` ở Overview, Users, Properties, KYC. Xóa Bookings/Ledger navigation nhưng không xóa module ngoài scope.
 
-### Phase 4 — Users vertical slice
+**Gate 3**: manual/targeted checks cho sáu login states, expired token, guest/host denial và protected-content flash; chạy `npm run lint`, `npm run build` trong `admin-ui`, ghi kết quả vào quickstart.
 
-1. Giữ service/query keys/filter architecture hiện tại; xác nhận search, role, status, page, limit khớp backend và reset page khi filter đổi.
-2. Tách error khỏi empty (hiện các table có nguy cơ gộp); thêm retry và unauthorized handling.
-3. User action menu không cung cấp status actions khi `user.role === 'admin'`; có explanation/disabled state nếu cần để người demo hiểu.
-4. Dùng Dialog hiện có cho confirmation gồm email/name, current status, target status; chỉ gọi mutation sau confirm.
-5. Khi success: toast + invalidate `usersQueryKeys.all`; khi conflict/error: toast rõ, refresh nếu stale; disable trigger/dialog trong pending.
-6. Kiểm thử target guest/host success và target self/other admin 403 qua backend, không chỉ UI.
+### Phase 4 — Explicit real-data Overview
 
-**Gate**: server targeted tests nếu rule thay đổi → UI state/mutation checks → lint/build các package bị ảnh hưởng.
+1. Trong `admin-ui/src/features/ledger/services/ledger-service.ts`, chuyển sang `/admin/ledger/platform-balance`, khai báo response gồm `balanceCents` và `currency`, bỏ fallback `{ balanceCents: 0 }`. Trong `admin-ui/src/features/ledger/hooks/use-ledger-queries.ts`, expose data, loading, error, unauthorized và `refetch`.
+2. Reuse `admin-ui/src/features/users/services/users-service.ts` + `admin-ui/src/features/users/hooks/use-users-queries.ts` với `{ page: 1, limit: 1 }` để lấy `total users`; reuse properties equivalents để lấy `total properties`; reuse `admin-ui/src/features/kyc/services/kyc-service.ts` + `admin-ui/src/features/kyc/hooks/use-kyc-queries.ts` để lấy `pendingDocs.length`. Không tạo analytics endpoint hoặc simulated count.
+3. Trong `admin-ui/src/app/(dashboard)/components/overview-dashboard-container.tsx`, chỉ render: real platform balance, total users, total properties, pending KYC count, và shortcuts `/users`, `/properties`, `/kyc`. Xóa `mockRecentBookings`, hard-coded values/descriptions, Recent Bookings table, Sync Meilisearch control và mọi KPI khác.
+4. Overview phải phân biệt loading, empty/unavailable, error + retry, unauthorized và success cho các query thật; lỗi/rỗng không được hiển thị thành zero giả.
 
-### Phase 5 — Properties and license vertical slice
+**Gate 4**: kiểm tra năm data states cho từng region, đối chiếu bốn values với API thật, tìm `mockRecentBookings`/hard-coded business records/Recent Bookings trong Overview, rồi chạy `npm run lint`, `npm run build` trong `admin-ui`. Ghi kết quả vào quickstart.
 
-1. Giữ list/search/filter/pagination services hiện có; sửa state separation và pagination validity.
-2. License drawer xử lý riêng loading, no-license, fetch error + retry, unauthorized, success và broken/missing document URL.
-3. Dùng confirmation dialog cho active/paused/archived, nêu title/current/target status và hậu quả dễ hiểu.
-4. Khi activate bị backend từ chối do KYC/license, hiển thị message nghiệp vụ; không optimistic-update. Success invalidate toàn bộ property list/license keys liên quan.
-5. Chỉ hiển thị View License khi có ý nghĩa nhưng vẫn cho phép empty state hợp lệ theo contract; không thêm chức năng approve license.
+### Phase 5 — Users vertical slice
 
-**Gate**: property use-case tests → state/mutation checks → server/admin-ui lint và build.
+1. Giữ contract trong `admin-ui/src/features/users/services/users-service.ts` và types trong `admin-ui/src/features/users/types.ts`; expose retry/error classification trong `admin-ui/src/features/users/hooks/use-users-queries.ts`, reset page từ `admin-ui/src/features/users/components/users-filter-bar.tsx` và `admin-ui/src/app/(dashboard)/users/components/users-management-container.tsx`.
+2. Tách loading, empty, error + retry, unauthorized và success trong `admin-ui/src/features/users/components/users-table.tsx`. Trong `admin-ui/src/features/users/components/user-actions-menu.tsx`, không cung cấp status mutation cho bất kỳ `role === 'admin'` row nào.
+3. Tạo `admin-ui/src/features/users/components/user-status-confirmation-dialog.tsx` bằng Dialog hiện có; wire qua users table/container. Cập nhật `admin-ui/src/features/users/hooks/use-users-mutations.ts` cho pending lock, backend error message, success invalidation và stale refetch; không optimistic update.
 
-### Phase 6 — KYC vertical slice
+**Gate 5**: kiểm tra năm data states, filter/page reset, cancel/confirm, guest/host persisted success, hidden admin actions và direct self/other-admin 403; rerun targeted server auth tests, rồi `npm run lint`, `npm run build` trong `admin-ui`. Ghi kết quả vào quickstart.
 
-1. Tách error khỏi empty queue; thêm retry, unauthorized và success count.
-2. Approve mở confirmation rõ ràng trước mutation (hiện gọi trực tiếp); Reject yêu cầu reason trim hợp lệ và confirmation cuối trước mutation.
-3. Backend kiểm tra document còn pending trước review để tránh review lặp/stale; trả conflict/business error rõ ràng nếu đã xử lý.
-4. Sau success: toast + invalidate pending queue; sau stale failure: refetch queue; disable mọi review trigger trong pending.
-5. Không thay MockKycProvider trong phạm vi này vì admin review dùng dữ liệu KYC đã persisted; tuyệt đối không tạo mock submissions trong UI. Việc thay provider KYC thuộc out of scope.
+### Phase 6 — Properties and license vertical slice
 
-**Gate**: KYC use-case tests → UI 5-state/review checks → server/admin-ui lint và build.
+1. Giữ contract trong `admin-ui/src/features/properties/services/properties-service.ts` và `types.ts`; expose retry/error classification trong `hooks/use-properties-queries.ts`, reset pagination qua `components/properties-filter-bar.tsx` và `app/(dashboard)/properties/components/properties-management-container.tsx`.
+2. Tách five-state table rendering trong `admin-ui/src/features/properties/components/properties-table.tsx`; hoàn thiện license loading, no-license empty, error + retry, unauthorized, success và broken/missing URL trong `admin-ui/src/features/properties/components/property-license-drawer.tsx`. Không thêm license approval.
+3. Tạo `admin-ui/src/features/properties/components/property-status-confirmation-dialog.tsx`; wire từ `property-actions-menu.tsx`, `properties-table.tsx` và management container. Cập nhật `hooks/use-properties-mutations.ts` cho pending lock, backend KYC/license messages, success invalidation và stale refetch; không optimistic update.
 
-### Phase 7 — Integrated demo validation
+**Gate 6**: rerun targeted listing prerequisite/controller tests; kiểm tra five-state list, license sub-states, filter/page reset, cancel/confirm, persisted refresh và activation bị chặn khi thiếu bất kỳ prerequisite nào; chạy server `npm run lint`/`npm run build` và admin-ui `npm run lint`/`npm run build`. Ghi kết quả vào quickstart.
 
-1. Chuẩn bị dữ liệu thật qua seed/database workflow hiện có: admin, guest, host, admin khác, properties có/không license, pending KYC, platform revenue ledger VND.
-2. Chạy authorization matrix trực tiếp vào API cho no-token/guest/host/admin.
-3. Chạy demo script từ login đến tất cả mutation, reload sau từng mutation để xác nhận persistence.
-4. Chạy full applicable tests, lint, builds; smoke test guest/host contract bị ảnh hưởng.
-5. Ghi lại command, kết quả, environment dependency và exception chưa giải quyết; lỗi nghiêm trọng/build failure chặn demo handoff.
+### Phase 7 — KYC vertical slice
+
+1. Expose retry/error classification trong `admin-ui/src/features/kyc/hooks/use-kyc-queries.ts` và giữ API thật trong `services/kyc-service.ts`; tách loading, empty, error + retry, unauthorized và success trong `components/kyc-documents-table.tsx`.
+2. Thêm approve confirmation trong `admin-ui/src/features/kyc/components/kyc-review-dialog.tsx`; trim/validate reject reason và thêm final confirmation trong `kyc-rejection-dialog.tsx`; coordinate state trong `admin-ui/src/app/(dashboard)/kyc/components/kyc-queue-container.tsx`.
+3. Cập nhật `admin-ui/src/features/kyc/hooks/use-kyc-mutations.ts` cho pending lock, backend message, queue invalidation và stale/conflict refetch; không thay `server/src/modules/kyc/infrastructure/providers/mock-kyc-provider.ts` vì provider integration/rescreen nằm ngoài admin review scope và không tạo mock submission trong UI.
+
+**Gate 7**: rerun targeted KYC tests; kiểm tra five-state queue, approve cancel/confirm, reject blank/cancel/confirm, duplicate-review conflict và persisted queue refresh; chạy server `npm run lint`/`npm run build` và admin-ui `npm run lint`/`npm run build`. Ghi kết quả vào quickstart.
+
+### Phase 8 — Integrated demo and final constitution gate
+
+1. Chuẩn bị persisted demo data bằng seed/database workflow hiện có: active admin, admin khác, guest, host, verified/unverified KYC, properties có verified/missing/unverified license (gồm `requiresLocalLicense=false`), pending KYC và platform/revenue/VND ledger account. Không hard-code records vào UI và không migration.
+2. Chạy authorization matrix no-token/invalid/admin/guest/host cho account, property/license, KYC và admin platform-balance routes; xác nhận generic ledger route không bị thay contract.
+3. Chạy login → Overview four real values → Users mutation → Properties/license/activation → KYC approve/reject; reload sau mutation để xác nhận persistence và chạy targeted guest/host regression smoke.
+4. Trong `server`: `npm test -- --runInBand`, `npm run lint`, `npm run build`, và `npm run test:e2e` khi environment sẵn có. Trong `admin-ui`: `npm run lint`, `npm run build`. Ghi toàn bộ command/result/exception vào quickstart.
+5. Re-run Constitution Check: không client-only authorization, mock data, missing states, contract break, migration, dependency, unrelated refactor hoặc feature expansion. Failure nghiêm trọng hoặc build failure chặn handoff.
+
+**Gate 8**: chỉ handoff khi authorization matrix, integrated real-data demo, guest/host regression checks, full applicable server validation, admin-ui lint/build và final Constitution Check đều pass hoặc có environment-only omission được ghi rõ; không chấp nhận exception cho authorization, activation prerequisites hoặc build failure.
 
 ## API Contract Strategy
 
 - Giữ `ApiResponse.success(data, message)` và global error envelope hiện hữu.
 - Không đổi path/body/response của accounts, properties/license, KYC endpoints.
-- Platform balance phải có một route mà server enforce admin. Nếu endpoint `/ledger/accounts/balance` có consumer guest/host, thêm `/admin/ledger/platform-balance` dùng cùng `GetBalanceUseCase`; nếu xác nhận không có consumer khác, có thể decorate route hiện tại nhưng phải chứng minh không regression.
+- Platform balance dùng route mới `GET /admin/ledger/platform-balance`, enforce `JwtAuthGuard` + `@Authorize('admin')` và fixed selector `platform/revenue/VND`. Giữ nguyên `/ledger/accounts/balance`; Admin UI là consumer duy nhất được tìm thấy và được chuyển sang route mới.
 - 401 = thiếu/sai/hết hạn token; 403 = authenticated nhưng sai role hoặc target account là admin; 409/400 phù hợp cho stale/invalid domain transition.
 - Contract tham chiếu: [admin-api.openapi.yaml](./contracts/admin-api.openapi.yaml).
 
 ## Complexity Tracking
 
-Không có constitution violation dự kiến. Nếu cần dependency, migration, rewrite hoặc admin override property prerequisites, implementation phải dừng và cập nhật plan/spec trước.
+Không có constitution violation dự kiến. Kế hoạch không thêm migration, dependency hay module tính năng ngoài phạm vi. Nếu implementation phát hiện cần một trong các thay đổi đó, hoặc cần giảm KYC/license activation prerequisites, phải dừng và cập nhật spec/plan trước.
 

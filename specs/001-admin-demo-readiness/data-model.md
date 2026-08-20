@@ -23,7 +23,7 @@ Không dự kiến Prisma migration. Các entity và field cần thiết đã t�
 - Relevant fields: title, city/address, `requiresLocalLicense`, status, timestamps
 - Statuses exposed to admin mutation: `active`, `paused`, `archived`
 - Planned transition rule:
-  - `active`: host KYC verified; nếu requires license thì phải có license `verified`.
+  - `active`: host KYC phải `verified` và property license phải `verified` trong mọi trường hợp; `requiresLocalLicense` không miễn prerequisite này và admin không có override.
   - `paused`, `archived`: áp dụng theo domain/business constraints hiện hành.
 - Admin confirmation không thay đổi state; chỉ confirmed API success mới thay đổi persisted state.
 

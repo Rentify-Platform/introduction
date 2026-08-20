@@ -29,7 +29,7 @@
 - [x] Admin accounts are protected from all status mutations by a testable backend 403 rule
 - [x] Existing feature-based frontend and Clean Architecture backend are preserved
 - [x] Real APIs are required and mock production data is prohibited
-- [x] Loading, empty, error, unauthorized and success states are specified
+- [x] Data-screen loading, empty, error, unauthorized and success states plus the login-specific state matrix are specified
 - [x] Unrelated rewrites, scope expansion and unnecessary dependencies are excluded
 - [x] Phase validation and final build gates are specified
 
@@ -46,3 +46,4 @@
 - Repository discovery found existing feature slices and APIs for users, properties/licenses, KYC and ledger balance.
 - Planning must explicitly address the current mock dashboard data and ensure platform balance is protected by backend admin authorization.
 - Planning must include backend tests for attempts to change the caller's own admin account and a different admin account; both must return 403 without persistence changes.
+- Latest `origin/main` rebase was reinspected; clarification artifacts target the current unconditional property/account status use cases and mock Overview implementation.

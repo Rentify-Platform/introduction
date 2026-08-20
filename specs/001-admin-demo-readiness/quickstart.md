@@ -8,7 +8,7 @@
   - one active admin used for login;
   - another admin to test protected status mutation;
   - at least one guest and one host;
-  - properties with and without submitted/verified license;
+  - properties with verified, missing and unverified licenses, including a `requiresLocalLicense=false` property to prove license verification is still mandatory for activation;
   - at least two pending KYC documents;
   - platform/revenue/VND ledger account or a known empty-state fixture.
 
@@ -58,7 +58,7 @@ Additional invariant checks:
 ## Main Demo Script
 
 1. Open Admin UI and log in with active admin credentials.
-2. Verify Overview loads platform balance from API and contains no fake KPIs/recent bookings.
+2. Verify Overview loads platform balance, total users, total properties and pending KYC count from real APIs, provides navigation shortcuts, and contains no other KPI or recent bookings.
 3. Open Users, search/filter, attempt a guest/host status change, cancel once, then confirm; verify toast and refreshed persisted status.
 4. Verify an admin row has no usable status action.
 5. Open Properties, search/filter, inspect a license and its empty/error alternatives, cancel then confirm a valid status change.
@@ -76,6 +76,8 @@ For Overview balance, Users list, Properties list/license, and KYC queue/review 
 - Error: distinct from empty, useful message, retry when safe.
 - Unauthorized: protected data hidden; 401 login recovery and 403 access denied.
 - Success: real API data rendered; actions reflect current server state.
+
+For Login verify idle, loading, validation error, authentication error, unauthorized and success redirect. Login has no empty-state requirement.
 
 ## Release Gate
 
