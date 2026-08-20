@@ -1,0 +1,174 @@
+openapi: 3.0.3
+info:
+  title: Rentify Admin Demo Contract
+  version: 1.0.0
+  description: Existing admin-facing contracts and the planned protected platform-balance read.
+servers:
+  - url: http://127.0.0.1:8080
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      security: []
+      summary: Authenticate an existing account
+      responses:
+        '200': { description: Authenticated; response includes token and user role }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/me:
+    get:
+      summary: Resolve current account and role
+      responses:
+        '200': { description: Current account }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /admin/accounts:
+    get:
+      summary: List and filter accounts
+      parameters:
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: role, schema: { type: string, enum: [guest, host, admin] } }
+        - { in: query, name: status, schema: { type: string, enum: [active, suspended, banned] } }
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, default: 20 } }
+      responses:
+        '200': { description: Paginated accounts }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/accounts/{accountId}/status:
+    patch:
+      summary: Change a guest or host account status
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, suspended, banned] }
+      responses:
+        '200': { description: Account updated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Caller is not admin, or target account has admin role; no update occurs
+        '404': { description: Account not found }
+  /admin/properties:
+    get:
+      summary: List and filter properties
+      parameters:
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: hostId, schema: { type: string, format: uuid } }
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, default: 20 } }
+      responses:
+        '200': { description: Paginated properties }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/properties/{propertyId}/license:
+    get:
+      summary: Read a property's submitted license
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      responses:
+        '200': { description: License data or null when none exists }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/properties/{propertyId}/status:
+    patch:
+      summary: Change property status
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, paused, archived] }
+      responses:
+        '200': { description: Property updated }
+        '400': { description: Invalid transition or unmet activation prerequisite }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Property not found }
+  /admin/kyc/pending:
+    get:
+      summary: List pending KYC documents
+      responses:
+        '200': { description: Pending KYC document array }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/kyc/review/{documentId}:
+    post:
+      summary: Approve or reject a pending KYC document
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [approve, reject] }
+                rejectionReason:
+                  type: string
+                  description: Required and non-blank when action is reject
+      responses:
+        '200': { description: Review persisted }
+        '400': { description: Invalid action or missing rejection reason }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: KYC document not found }
+        '409': { description: KYC document is no longer pending }
+  /admin/ledger/platform-balance:
+    get:
+      summary: Read platform revenue balance in VND
+      description: Preferred compatibility-safe route if the existing general ledger balance route has non-admin consumers.
+      responses:
+        '200':
+          description: Platform balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [balanceCents, currency]
+                    properties:
+                      balanceCents: { type: integer, format: int64 }
+                      currency: { type: string, example: VND }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    AccountId:
+      in: path
+      name: accountId
+      required: true
+      schema: { type: string, format: uuid }
+    PropertyId:
+      in: path
+      name: propertyId
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    Unauthorized:
+      description: Missing, invalid, or expired access token
+    Forbidden:
+      description: Authenticated caller lacks admin permission
