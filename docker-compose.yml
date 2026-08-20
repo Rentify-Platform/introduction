@@ -54,6 +54,9 @@ services:
       command: sh -c "npx prisma migrate deploy && node dist/main.js"
       ports:
          - '8080:8080'
+      env_file:
+         - path: ./server/.env
+           required: false
       environment:
          - DATABASE_URL=postgresql://rentify:rentify@postgres:5432/rentify?schema=public
          - REDIS_URL=redis://redis:6379
