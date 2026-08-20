@@ -33,10 +33,14 @@ apiClient.interceptors.response.use(
       if (error.response && error.response.status === 401) {
          if (typeof window !== 'undefined') {
             localStorage.removeItem('rentify_token')
-            // Optionally redirect to login or reload page
-            // window.location.href = '/'
          }
       }
+      
+      const backendMessage = error.response?.data?.message;
+      if (backendMessage) {
+         error.message = Array.isArray(backendMessage) ? backendMessage.join(', ') : backendMessage;
+      }
+      
       return Promise.reject(error)
    }
 )

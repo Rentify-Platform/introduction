@@ -155,10 +155,10 @@ async function main() {
 
       // Ensure accounts exist
       await client.query(`
-         INSERT INTO accounts (id, email, role, status, created_at, updated_at)
+         INSERT INTO accounts (id, email, role, status, password_hash, created_at, updated_at)
          VALUES 
-            ('${HOST_ID}', 'host@rentify.com', 'host', 'active', NOW(), NOW()),
-            ('${GUEST_ID}', 'guest@rentify.com', 'guest', 'active', NOW(), NOW())
+            ('${HOST_ID}', 'host@rentify.com', 'host', 'active', '$2b$10$5RxdyZnVxdYusw2zUs8EGe2tUXiqKn777SsC27gvFc.QxsBEoieq.', NOW(), NOW()),
+            ('${GUEST_ID}', 'guest@rentify.com', 'guest', 'active', '$2b$10$5RxdyZnVxdYusw2zUs8EGe2tUXiqKn777SsC27gvFc.QxsBEoieq.', NOW(), NOW())
          ON CONFLICT DO NOTHING
       `)
 
@@ -168,6 +168,14 @@ async function main() {
          VALUES 
             ('${HOST_ID}', 'Wayan', 'Suardana', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80', 'Local host passionate about eco-friendly bamboo architecture.', NOW(), NOW()),
             ('${GUEST_ID}', 'Sarah', 'Jenkins', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80', 'Avid traveler and architectural photographer.', NOW(), NOW())
+         ON CONFLICT (account_id) DO NOTHING
+      `)
+
+      // Ensure host_profiles exist (Requires KYC verification for listings to be active)
+      await client.query(`
+         INSERT INTO host_profiles (account_id, is_superhost, kyc_status, created_at, updated_at)
+         VALUES 
+            ('${HOST_ID}', true, 'verified', NOW(), NOW())
          ON CONFLICT (account_id) DO NOTHING
       `)
 
@@ -181,6 +189,28 @@ async function main() {
       await client.query('DELETE FROM property_licenses')
       await client.query('DELETE FROM wishlist_items')
       await client.query('DELETE FROM properties')
+
+       // Seed property_types lookup table
+       await client.query(`
+          INSERT INTO property_types (code, label) VALUES
+             ('entire_home', 'Entire Home'),
+             ('apartment', 'Apartment'),
+             ('guesthouse', 'Guesthouse'),
+             ('cabin', 'Cabin'),
+             ('villa', 'Villa')
+          ON CONFLICT (code) DO NOTHING
+       `)
+
+       // Seed amenities lookup table
+       await client.query(`
+          INSERT INTO amenities (code, label, category) VALUES
+             ('wifi', 'Wifi', 'basic'),
+             ('kitchen', 'Kitchen', 'basic'),
+             ('air_conditioning', 'Air Conditioning', 'comfort'),
+             ('pool', 'Swimming Pool', 'luxury'),
+             ('parking', 'Free Parking', 'basic')
+          ON CONFLICT (code) DO NOTHING
+       `)
 
       // Fetch lookup tables
       const { rows: types } = await client.query('SELECT id, code FROM property_types')
