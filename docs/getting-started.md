@@ -5,6 +5,69 @@ Có 2 cách chạy Rentify Platform:
 - **[Cách 1: Docker Compose](#cách-1-docker-compose-khuyến-nghị)** — Chạy toàn bộ hệ thống bằng 1 lệnh duy nhất. Phù hợp khi muốn demo nhanh hoặc deploy.
 - **[Cách 2: Chạy thuần (Manual)](#cách-2-chạy-thuần-manual)** — Chạy từng service riêng. Phù hợp khi đang phát triển, cần hot-reload và debug.
 
+> **Cả 2 cách đều cần setup biến môi trường trước.** Xem phần [Cấu hình biến môi trường](#cấu-hình-biến-môi-trường) bên dưới.
+
+---
+
+## Cấu Hình Biến Môi Trường
+
+### Server (`server/.env`)
+
+```bash
+# ── Database ──
+DATABASE_URL=postgresql://rentify:rentify@localhost:5432/rentify?schema=public
+
+# ── Redis ──
+REDIS_URL=redis://localhost:6379
+
+# ── Meilisearch ──
+MEILI_HOST=http://localhost:7700
+MEILI_MASTER_KEY=rentify_master_key_123456
+
+# ── Auth ──
+JWT_SECRET=               # Secret key cho JWT token (bắt buộc thay đổi khi deploy)
+
+# ── Encryption ──
+ENCRYPTION_KEY=           # Key mã hoá dữ liệu nhạy cảm (phải đủ 32 bytes)
+
+# ── SePay (Thanh toán) ──
+SEPAY_API_TOKEN=          # API token từ SePay
+SEPAY_BANK_ACCOUNT_ID=    # ID tài khoản ngân hàng trên SePay
+SEPAY_BANK_SLUG=          # Slug ngân hàng (vd: bidv, vietcombank)
+SEPAY_WEBHOOK_TOKEN=      # Token xác thực webhook từ SePay
+
+# ── Server ──
+PORT=8080
+```
+
+### Client (`client/.env`)
+
+```bash
+# ── API ──
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8080
+
+# ── Mapbox (Bản đồ) ──
+NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=    # Access token từ Mapbox
+
+# ── Cloudinary (Upload ảnh) ──
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=  # Cloud name từ Cloudinary
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET= # Upload preset (unsigned)
+
+# ── SePay (Hiển thị thông tin chuyển khoản) ──
+NEXT_PUBLIC_SEPAY_BANK_NAME=       # Tên ngân hàng (vd: BIDV)
+NEXT_PUBLIC_SEPAY_BANK_ACCOUNT=    # Số tài khoản ngân hàng
+NEXT_PUBLIC_SEPAY_ACCOUNT_HOLDER=  # Tên chủ tài khoản
+```
+
+### Admin (`admin-ui/.env`)
+
+```bash
+# ── API ──
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8080
+```
+
+> **Lưu ý:** Khi chạy bằng Docker Compose, các biến `DATABASE_URL`, `REDIS_URL`, `MEILI_HOST`, `MEILI_MASTER_KEY`, `PORT` đã được cấu hình sẵn trong `docker-compose.yml`. Chỉ cần tạo `server/.env` cho các biến còn lại (JWT, SePay, Encryption).
+
 ---
 
 ## Cách 1: Docker Compose (Khuyến nghị)
