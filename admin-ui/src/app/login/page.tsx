@@ -20,6 +20,8 @@ import {
 import { loginSchema, LoginInput } from '@/features/auth/schemas/auth-schema'
 import { useAuthMutations } from '@/features/auth/hooks/use-auth-mutations'
 import { useAuthStore } from '@/features/auth/store/use-auth-store'
+import { AdminAccessDeniedError } from '@/features/auth/types'
+import { getApiErrorMessage } from '@/lib/api/api-client'
 
 export default function LoginPage() {
    const router = useRouter()
@@ -49,16 +51,21 @@ export default function LoginPage() {
    const onSubmit = async (data: LoginInput) => {
       setError(null)
       try {
-         const result = await login(data)
-         if (result.user.role !== 'admin') {
-            setError('Access Denied: Only administrators can access this system.')
+         await login(data)
+         toast.success('Admin login successful!')
+         router.replace('/')
+      } catch (caughtError) {
+         if (caughtError instanceof AdminAccessDeniedError) {
+            const message = 'Access denied: only administrators can access this system.'
+            setError(message)
             toast.error('Access Denied: Admin role required')
             return
          }
-         toast.success('Admin login successful!')
-         router.push('/')
-      } catch (err) {
-         const friendlyMsg = 'Login failed. Please verify credentials.'
+
+         const friendlyMsg = getApiErrorMessage(
+            caughtError,
+            'Login failed. Please verify credentials.'
+         )
          setError(friendlyMsg)
          toast.error(friendlyMsg)
       }

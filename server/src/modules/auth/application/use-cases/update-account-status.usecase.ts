@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common'
-import { AccountNotFoundException } from '../../domain/errors/auth.errors'
+import {
+   AccountNotFoundException,
+   AdminAccountStatusProtectedException
+} from '../../domain/errors/auth.errors'
 import { Account } from '../../domain/entities/auth.entity'
 import { AccountRepository } from '../../domain/repositories/auth.repository'
 
@@ -21,7 +24,12 @@ export class UpdateAccountStatusUseCase {
          throw new AccountNotFoundException(command.accountId)
       }
 
-      // 2. Apply the new status via the repository
+      // 2. Admin accounts are immutable through the account-status workflow
+      if (existing.role === 'admin') {
+         throw new AdminAccountStatusProtectedException()
+      }
+
+      // 3. Apply the new status via the repository
       return this.accountRepository.updateStatus(command.accountId, command.status)
    }
 }

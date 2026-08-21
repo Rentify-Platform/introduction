@@ -24,8 +24,10 @@ interface UsersTableProps {
    isLoading: boolean
    isFetching: boolean
    error: unknown
+   isUnauthorized: boolean
+   onRetry: () => void
    onFilterChange: (filter: UsersFilter) => void
-   onUpdateStatus: (accountId: string, status: 'active' | 'suspended' | 'banned') => void
+   onRequestStatusChange: (user: UserAccount, status: 'active' | 'suspended' | 'banned') => void
    isUpdatingStatus: boolean
 }
 
@@ -42,8 +44,10 @@ export function UsersTable({
    isLoading,
    isFetching,
    error,
+   isUnauthorized,
+   onRetry,
    onFilterChange,
-   onUpdateStatus,
+   onRequestStatusChange,
    isUpdatingStatus
 }: UsersTableProps) {
    const page = filter.page ?? 1
@@ -59,9 +63,7 @@ export function UsersTable({
                   {total > 0 ? `${total} accounts found` : 'No accounts match the current filters'}
                </CardDescription>
             </div>
-            {isFetching && !isLoading && (
-               <Loader2 className="h-4 w-4 animate-spin text-pink-400" />
-            )}
+            {isFetching && !isLoading && <Loader2 className="h-4 w-4 animate-spin text-pink-400" />}
          </CardHeader>
 
          <CardContent className="p-0">
@@ -70,13 +72,26 @@ export function UsersTable({
                   <Loader2 className="mb-3 h-8 w-8 animate-spin text-pink-400" />
                   <p className="text-sm">Loading accounts…</p>
                </div>
-            ) : error || users.length === 0 ? (
+            ) : error ? (
+               <div className="py-16 text-center">
+                  <Users2 className="mx-auto mb-3 h-10 w-10 text-rose-300" />
+                  <p className="text-sm font-medium text-rose-600">
+                     {isUnauthorized ? 'Administrator access required' : 'Unable to load accounts'}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                     {isUnauthorized
+                        ? 'Your account cannot access user management.'
+                        : 'Check the connection and try again.'}
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
+                     Try Again
+                  </Button>
+               </div>
+            ) : users.length === 0 ? (
                <div className="py-16 text-center">
                   <Users2 className="mx-auto mb-3 h-10 w-10 text-zinc-300" />
                   <p className="text-sm font-medium text-zinc-500">No accounts found</p>
-                  <p className="mt-1 text-xs text-zinc-400">
-                     {error ? 'Failed to load data.' : 'Try adjusting your filters.'}
-                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">Try adjusting your filters.</p>
                </div>
             ) : (
                <>
@@ -119,7 +134,7 @@ export function UsersTable({
                                  </span>
                               </TableCell>
                               <TableCell>
-                                 <span className="text-xs capitalize text-zinc-500">
+                                 <span className="text-xs text-zinc-500 capitalize">
                                     {user.guestKycStatus?.replace('_', ' ') ?? '—'}
                                  </span>
                               </TableCell>
@@ -132,7 +147,9 @@ export function UsersTable({
                               <TableCell>
                                  <UserActionsMenu
                                     user={user}
-                                    onUpdateStatus={onUpdateStatus}
+                                    onUpdateStatus={(_accountId, status) =>
+                                       onRequestStatusChange(user, status)
+                                    }
                                     isLoading={isUpdatingStatus}
                                  />
                               </TableCell>

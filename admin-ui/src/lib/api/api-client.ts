@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuthStore } from '@/features/auth/store/use-auth-store'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080'
 
@@ -30,11 +31,23 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
    (response) => response,
    (error) => {
-      if (error.response && error.response.status === 401) {
-         if (typeof window !== 'undefined') {
-            localStorage.removeItem('rentify_admin_token')
-         }
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+         useAuthStore.getState().clearAuth()
       }
       return Promise.reject(error)
    }
 )
+
+export function getApiErrorStatus(error: unknown): number | undefined {
+   return axios.isAxiosError(error) ? error.response?.status : undefined
+}
+
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+   if (!axios.isAxiosError(error)) {
+      return error instanceof Error ? error.message : fallback
+   }
+
+   const payload = error.response?.data as
+      { message?: string; error?: { message?: string } } | undefined
+   return payload?.message || payload?.error?.message || fallback
+}

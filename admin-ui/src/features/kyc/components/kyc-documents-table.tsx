@@ -11,14 +11,16 @@ import {
    TableRow
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Loader2, CheckCircle, User as UserIcon } from 'lucide-react'
+import { Loader2, CheckCircle, User as UserIcon, AlertCircle } from 'lucide-react'
 import { KycDocument } from '@/features/kyc/types'
 import { formatDate } from '@/lib/utils'
 
 interface KycDocumentsTableProps {
    pendingDocs: KycDocument[]
    isLoading: boolean
-   error: any
+   error: unknown
+   isUnauthorized: boolean
+   onRetry: () => void
    onInspect: (doc: KycDocument) => void
 }
 
@@ -26,6 +28,8 @@ export function KycDocumentsTable({
    pendingDocs,
    isLoading,
    error,
+   isUnauthorized,
+   onRetry,
    onInspect
 }: KycDocumentsTableProps) {
    return (
@@ -47,7 +51,22 @@ export function KycDocumentsTable({
                   <Loader2 className="mb-2 h-8 w-8 animate-spin text-pink-500" />
                   <p className="text-sm">Loading pending submissions...</p>
                </div>
-            ) : error || pendingDocs.length === 0 ? (
+            ) : error ? (
+               <div className="py-12 text-center">
+                  <AlertCircle className="mx-auto mb-3 h-10 w-10 text-rose-300" />
+                  <p className="text-sm font-medium text-rose-600">
+                     {isUnauthorized ? 'Administrator access required' : 'Unable to load KYC queue'}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                     {isUnauthorized
+                        ? 'Your account cannot access identity reviews.'
+                        : 'Check the connection and try again.'}
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
+                     Try Again
+                  </Button>
+               </div>
+            ) : pendingDocs.length === 0 ? (
                <div className="py-12 text-center text-zinc-400">
                   <CheckCircle className="mx-auto mb-3 h-10 w-10 text-emerald-500/40" />
                   <p className="text-zinc-650 text-sm font-medium">Queue is empty!</p>

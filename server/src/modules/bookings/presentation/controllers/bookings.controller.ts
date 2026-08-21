@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger'
 import { createHmac, timingSafeEqual } from 'crypto'
-import { Authorize } from 'src/shared/decorators/authorize.decorator'
+import { Authorize } from '../../../../shared/decorators/authorize.decorator'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { JwtAuthGuard } from '../../../auth/infrastructure/jwt-auth.guard'
 import { AuthenticatedUser, CurrentUser } from '../../../auth/presentation/current-user.decorator'

@@ -17,6 +17,10 @@ interface UserActionsMenuProps {
 }
 
 export function UserActionsMenu({ user, onUpdateStatus, isLoading }: UserActionsMenuProps) {
+   if (user.role === 'admin') {
+      return null
+   }
+
    const isActive = user.status === 'active'
    const isSuspended = user.status === 'suspended'
    const isBanned = user.status === 'banned'

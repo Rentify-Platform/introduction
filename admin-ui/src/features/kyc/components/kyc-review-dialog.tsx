@@ -39,8 +39,13 @@ export function KycReviewDialog({
    onRejectClick,
    isSubmittingReview
 }: KycReviewDialogProps) {
+   const [isApproveConfirmationOpen, setIsApproveConfirmationOpen] = React.useState(false)
+
    return (
-      <Dialog open={!!selectedDoc} onOpenChange={onClose}>
+      <Dialog
+         open={!!selectedDoc}
+         onOpenChange={(open) => !open && !isSubmittingReview && onClose()}
+      >
          <DialogContent className="max-w-3xl border-zinc-200 bg-white text-zinc-900 shadow-2xl">
             <DialogHeader>
                <DialogTitle className="flex items-center gap-2 text-xl text-zinc-900">
@@ -139,36 +144,66 @@ export function KycReviewDialog({
             </div>
 
             <DialogFooter className="mt-6 flex gap-2 sm:gap-0">
-               <div className="flex w-full items-center justify-between">
-                  <Button
-                     variant="ghost"
-                     onClick={onClose}
-                     className="rounded-xl text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-                  >
-                     Cancel
-                  </Button>
-                  <div className="flex gap-2">
-                     <Button
-                        disabled={isSubmittingReview}
-                        onClick={onRejectClick}
-                        className="rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
-                     >
-                        <XCircle className="mr-1.5 h-4 w-4" /> Reject
-                     </Button>
-                     <Button
-                        disabled={isSubmittingReview}
-                        onClick={() => onApprove(selectedDoc.id)}
-                        className="rounded-xl bg-linear-to-r from-pink-500 to-rose-500 font-semibold text-white shadow-md shadow-pink-500/10"
-                     >
-                        {isSubmittingReview ? (
-                           <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                        ) : (
-                           <CheckCircle className="mr-1.5 h-4 w-4" />
-                        )}
-                        Verify & Approve
-                     </Button>
+               {isApproveConfirmationOpen ? (
+                  <div className="w-full space-y-3">
+                     <p className="text-sm text-zinc-600">
+                        Confirm approval for document {selectedDoc.id} belonging to account{' '}
+                        {selectedDoc.accountId}. This decision updates persisted KYC status.
+                     </p>
+                     <div className="flex justify-end gap-2">
+                        <Button
+                           variant="outline"
+                           disabled={isSubmittingReview}
+                           onClick={() => setIsApproveConfirmationOpen(false)}
+                        >
+                           Back
+                        </Button>
+                        <Button
+                           disabled={isSubmittingReview}
+                           onClick={() => onApprove(selectedDoc.id)}
+                        >
+                           {isSubmittingReview ? (
+                              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                           ) : (
+                              <CheckCircle className="mr-1.5 h-4 w-4" />
+                           )}
+                           Confirm Approval
+                        </Button>
+                     </div>
                   </div>
-               </div>
+               ) : (
+                  <div className="flex w-full items-center justify-between">
+                     <Button
+                        disabled={isSubmittingReview}
+                        variant="ghost"
+                        onClick={onClose}
+                        className="rounded-xl text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                     >
+                        Cancel
+                     </Button>
+                     <div className="flex gap-2">
+                        <Button
+                           disabled={isSubmittingReview}
+                           onClick={onRejectClick}
+                           className="rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                        >
+                           <XCircle className="mr-1.5 h-4 w-4" /> Reject
+                        </Button>
+                        <Button
+                           disabled={isSubmittingReview}
+                           onClick={() => setIsApproveConfirmationOpen(true)}
+                           className="rounded-xl bg-linear-to-r from-pink-500 to-rose-500 font-semibold text-white shadow-md shadow-pink-500/10"
+                        >
+                           {isSubmittingReview ? (
+                              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                           ) : (
+                              <CheckCircle className="mr-1.5 h-4 w-4" />
+                           )}
+                           Verify & Approve
+                        </Button>
+                     </div>
+                  </div>
+               )}
             </DialogFooter>
          </DialogContent>
       </Dialog>

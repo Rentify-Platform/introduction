@@ -3,8 +3,11 @@ import { KycDocument } from '../types'
 
 export const kycService = {
    async getPending(): Promise<KycDocument[]> {
-      const response = await apiClient.get('/admin/kyc/pending')
-      return response.data?.data || []
+      const response = await apiClient.get<{ data: KycDocument[] }>('/admin/kyc/pending')
+      if (!Array.isArray(response.data?.data)) {
+         throw new Error('Pending KYC queue is unavailable')
+      }
+      return response.data.data
    },
 
    async review(payload: {

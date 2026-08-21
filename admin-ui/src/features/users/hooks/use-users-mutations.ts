@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import { usersService } from '../services/users-service'
 import { usersQueryKeys } from './use-users-queries'
+import { getApiErrorMessage, getApiErrorStatus } from '@/lib/api/api-client'
 
 export function useUsersMutations() {
    const queryClient = useQueryClient()
@@ -22,15 +23,20 @@ export function useUsersMutations() {
                  ? 'suspended'
                  : 'banned'
          toast.success(`Account ${label} successfully.`)
-         queryClient.invalidateQueries({ queryKey: usersQueryKeys.all })
+         void queryClient.invalidateQueries({ queryKey: usersQueryKeys.all })
       },
-      onError: () => {
-         toast.error('Failed to update account status. Please try again.')
+      onError: (error) => {
+         toast.error(
+            getApiErrorMessage(error, 'Failed to update account status. Please try again.')
+         )
+         if ([403, 404, 409].includes(getApiErrorStatus(error) ?? 0)) {
+            void queryClient.refetchQueries({ queryKey: usersQueryKeys.all })
+         }
       }
    })
 
    return {
-      updateStatus: updateStatusMutation.mutate,
+      updateStatus: updateStatusMutation.mutateAsync,
       isUpdatingStatus: updateStatusMutation.isPending
    }
 }

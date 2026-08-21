@@ -26,3 +26,23 @@ export class InvalidKycReviewActionException extends BusinessException {
       )
    }
 }
+
+export class KycRejectionReasonRequiredException extends BusinessException {
+   constructor() {
+      super(
+         'KYC_REJECTION_REASON_REQUIRED',
+         'A rejection reason is required when rejecting a KYC document',
+         HttpStatus.BAD_REQUEST
+      )
+   }
+}
+
+export class KycDocumentAlreadyReviewedException extends BusinessException {
+   constructor() {
+      super(
+         'KYC_DOCUMENT_ALREADY_REVIEWED',
+         'This KYC document has already been reviewed',
+         HttpStatus.CONFLICT
+      )
+   }
+}
