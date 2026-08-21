@@ -2,10 +2,19 @@ import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../../prisma/prisma.service'
 import { LedgerAccount, LedgerOwnerType } from '../../domain/entities/ledger-account.entity'
 import { LedgerBalance } from '../../domain/entities/ledger-balance.entity'
-import { LedgerTransaction, LedgerTxnType } from '../../domain/entities/ledger-transaction.entity'
+import { LedgerTransaction } from '../../domain/entities/ledger-transaction.entity'
 import { LedgerEntry } from '../../domain/entities/ledger-entry.entity'
-import { LedgerRepository } from '../../domain/repositories/ledger.repository'
-import { ledger_owner_type, ledger_txn_type } from '@prisma/client'
+import { BalanceWithAccount } from '../../domain/entities/balance-with-account.entity'
+import { Payout } from '../../domain/entities/payout.entity'
+import { PlatformConfig } from '../../domain/entities/platform-config.entity'
+import {
+   FindAllPayoutsFilter,
+   FindAllTransactionsFilter,
+   LedgerRepository,
+   PaginatedPayouts,
+   PaginatedTransactions
+} from '../../domain/repositories/ledger.repository'
+import { ledger_txn_type, payout_status, Prisma } from '@prisma/client'
 
 @Injectable()
 export class LedgerPrismaRepository implements LedgerRepository {
@@ -19,6 +28,32 @@ export class LedgerPrismaRepository implements LedgerRepository {
          record.account_subtype,
          record.currency,
          record.created_at
+      )
+   }
+
+   private mapToTransactionEntity(record: any): LedgerTransaction {
+      const entries = (record.ledger_entries || []).map(
+         (e: any) =>
+            new LedgerEntry(
+               e.id,
+               e.transaction_id,
+               e.ledger_account_id,
+               e.amount_cents,
+               e.currency,
+               e.created_at
+            )
+      )
+
+      return new LedgerTransaction(
+         record.id,
+         record.idempotency_key,
+         record.type,
+         record.booking_id,
+         record.description,
+         record.metadata,
+         record.created_by,
+         record.created_at,
+         entries
       )
    }
 
@@ -136,29 +171,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
       })
       if (!record) return null
 
-      const entries = record.ledger_entries.map(
-         (e) =>
-            new LedgerEntry(
-               e.id,
-               e.transaction_id,
-               e.ledger_account_id,
-               e.amount_cents,
-               e.currency,
-               e.created_at
-            )
-      )
-
-      return new LedgerTransaction(
-         record.id,
-         record.idempotency_key,
-         record.type,
-         record.booking_id,
-         record.description,
-         record.metadata,
-         record.created_by,
-         record.created_at,
-         entries
-      )
+      return this.mapToTransactionEntity(record)
    }
 
    async findTransactionByIdempotencyKey(key: string): Promise<LedgerTransaction | null> {
@@ -168,29 +181,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
       })
       if (!record) return null
 
-      const entries = record.ledger_entries.map(
-         (e) =>
-            new LedgerEntry(
-               e.id,
-               e.transaction_id,
-               e.ledger_account_id,
-               e.amount_cents,
-               e.currency,
-               e.created_at
-            )
-      )
-
-      return new LedgerTransaction(
-         record.id,
-         record.idempotency_key,
-         record.type,
-         record.booking_id,
-         record.description,
-         record.metadata,
-         record.created_by,
-         record.created_at,
-         entries
-      )
+      return this.mapToTransactionEntity(record)
    }
 
    async saveTransaction(transaction: LedgerTransaction): Promise<LedgerTransaction> {
@@ -242,5 +233,153 @@ export class LedgerPrismaRepository implements LedgerRepository {
                e.created_at
             )
       )
+   }
+
+   async findAllTransactions(filter: FindAllTransactionsFilter): Promise<PaginatedTransactions> {
+      const { page = 1, limit = 20 } = filter
+      const skip = (page - 1) * limit
+
+      const where: Prisma.ledger_transactionsWhereInput = {}
+      if (filter.type) {
+         where.type = filter.type as ledger_txn_type
+      }
+      if (filter.bookingId) {
+         where.booking_id = filter.bookingId
+      }
+      if (filter.dateFrom || filter.dateTo) {
+         where.created_at = {}
+         if (filter.dateFrom) where.created_at.gte = filter.dateFrom
+         if (filter.dateTo) where.created_at.lte = filter.dateTo
+      }
+
+      const [total, records] = await this.prisma.$transaction([
+         this.prisma.ledger_transactions.count({ where }),
+         this.prisma.ledger_transactions.findMany({
+            where,
+            include: { ledger_entries: true },
+            orderBy: { created_at: 'desc' },
+            skip,
+            take: limit
+         })
+      ])
+
+      const data = records.map((record) => this.mapToTransactionEntity(record))
+
+      return { data, total, page, limit }
+   }
+
+   async findAllBalances(): Promise<BalanceWithAccount[]> {
+      const records = await this.prisma.ledger_balances.findMany({
+         orderBy: { updated_at: 'desc' },
+         include: {
+            ledger_accounts: {
+               include: {
+                  accounts: {
+                     include: { profiles: true }
+                  }
+               }
+            }
+         }
+      })
+
+      return records.map(
+         (record) =>
+            new BalanceWithAccount(
+               record.ledger_account_id,
+               record.ledger_accounts.owner_type,
+               record.ledger_accounts.owner_account_id,
+               record.ledger_accounts.accounts
+                  ? `${record.ledger_accounts.accounts.profiles?.first_name ?? ''} ${record.ledger_accounts.accounts.profiles?.last_name ?? ''}`.trim() ||
+                       null
+                  : null,
+               record.ledger_accounts.accounts?.email || null,
+               record.ledger_accounts.account_subtype,
+               record.ledger_accounts.currency,
+               record.balance_cents,
+               record.updated_at
+            )
+      )
+   }
+
+   async findAllPayouts(filter: FindAllPayoutsFilter): Promise<PaginatedPayouts> {
+      const { page = 1, limit = 20 } = filter
+      const skip = (page - 1) * limit
+
+      const where: Prisma.payoutsWhereInput = {}
+      if (filter.hostId) {
+         where.host_id = filter.hostId
+      }
+      if (filter.status) {
+         where.status = filter.status as payout_status
+      }
+      if (filter.dateFrom || filter.dateTo) {
+         where.scheduled_for = {}
+         if (filter.dateFrom) where.scheduled_for.gte = filter.dateFrom
+         if (filter.dateTo) where.scheduled_for.lte = filter.dateTo
+      }
+
+      const [total, records] = await this.prisma.$transaction([
+         this.prisma.payouts.count({ where }),
+         this.prisma.payouts.findMany({
+            where,
+            include: {
+               accounts: {
+                  include: { profiles: true }
+               }
+            },
+            orderBy: { created_at: 'desc' },
+            skip,
+            take: limit
+         })
+      ])
+
+      const data = records.map(
+         (record) =>
+            new Payout(
+               record.id,
+               record.host_id,
+               record.accounts
+                  ? `${record.accounts.profiles?.first_name ?? ''} ${record.accounts.profiles?.last_name ?? ''}`.trim() ||
+                       null
+                  : null,
+               record.accounts?.email || null,
+               record.ledger_transaction_id,
+               record.amount_cents,
+               record.currency,
+               record.status,
+               record.scheduled_for,
+               record.paid_at,
+               record.provider_payout_id,
+               record.created_at
+            )
+      )
+
+      return { data, total, page, limit }
+   }
+
+   async findPlatformConfig(): Promise<PlatformConfig | null> {
+      const record = await this.prisma.platform_config.findFirst({
+         orderBy: { updated_at: 'desc' }
+      })
+      if (!record) return null
+      return new PlatformConfig(record.fee_rules as Record<string, unknown>, record.updated_at)
+   }
+
+   async savePlatformConfig(feeRules: Record<string, unknown>): Promise<PlatformConfig> {
+      const now = new Date()
+      const existing = await this.prisma.platform_config.findFirst({
+         orderBy: { updated_at: 'desc' }
+      })
+
+      const record = existing
+         ? await this.prisma.platform_config.update({
+              where: { singleton: existing.singleton },
+              data: { fee_rules: feeRules as Prisma.InputJsonValue, updated_at: now }
+           })
+         : await this.prisma.platform_config.create({
+              data: { fee_rules: feeRules as Prisma.InputJsonValue, updated_at: now }
+           })
+
+      return new PlatformConfig(record.fee_rules as Record<string, unknown>, record.updated_at)
    }
 }
