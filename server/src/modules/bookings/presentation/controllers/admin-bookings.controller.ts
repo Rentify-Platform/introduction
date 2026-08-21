@@ -25,6 +25,8 @@ import {
 } from '../../application/use-cases/cancel-booking.usecase'
 import { BookingsMapper } from '../mappers/bookings.mapper'
 import { CancelBookingRequest } from '../requests/cancel-booking.request'
+import { OverrideCancellationRequest } from '../requests/override-cancellation.request'
+import { AdminOverrideCancellationUseCase } from '../../application/use-cases/admin-override-cancellation.usecase'
 
 @ApiTags('Admin - Bookings')
 @ApiBearerAuth('bearer')
@@ -35,7 +37,8 @@ export class AdminBookingsController {
       private readonly getBookingDetailsUseCase: GetBookingDetailsUseCase,
       private readonly approveBookingUseCase: ApproveBookingUseCase,
       private readonly declineBookingUseCase: DeclineBookingUseCase,
-      private readonly cancelBookingUseCase: CancelBookingUseCase
+      private readonly cancelBookingUseCase: CancelBookingUseCase,
+      private readonly adminOverrideCancellationUseCase: AdminOverrideCancellationUseCase
    ) {}
 
    @Get()
@@ -186,5 +189,26 @@ export class AdminBookingsController {
          BookingsMapper.toBookingResponse(booking, payment),
          'Booking cancelled successfully'
       )
+   }
+
+   @Post(':id/override-cancellation')
+   @Authorize('admin')
+   @ApiOperation({ summary: 'Override cancellation policy amounts (Admin only)' })
+   @ApiParam({ name: 'id', type: String, description: 'Booking UUID' })
+   async overrideCancellation(
+      @Param('id') id: string,
+      @CurrentUser() user: AuthenticatedUser,
+      @Body() request: OverrideCancellationRequest
+   ) {
+      const command = {
+         bookingId: id,
+         adminId: user.id,
+         overrideReason: request.overrideReason,
+         guestRefundCents: request.guestRefundCents,
+         hostPayoutCents: request.hostPayoutCents,
+         platformFeeKeptCents: request.platformFeeKeptCents
+      }
+      await this.adminOverrideCancellationUseCase.execute(command)
+      return ApiResponse.success(null, 'Cancellation overridden successfully')
    }
 }

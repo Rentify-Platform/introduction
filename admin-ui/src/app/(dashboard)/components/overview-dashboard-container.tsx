@@ -21,73 +21,48 @@ import {
    TableHeader,
    TableRow
 } from '@/components/ui/table'
-import { useLedgerQueries } from '@/features/ledger/hooks/use-ledger-queries'
+import { useDashboardOverviewQuery, useRecentBookingsQuery } from '@/features/dashboard/hooks/use-dashboard-queries'
 import { usePropertiesMutations } from '@/features/properties/hooks/use-properties-mutations'
 import { formatVND } from '@/lib/utils'
 
 export function OverviewDashboardContainer() {
    // Custom query and mutation hooks
-   const { balanceData, isLoadingBalance } = useLedgerQueries()
+   const { data: overviewData, isLoading: isLoadingOverview } = useDashboardOverviewQuery()
+   const { data: recentBookings, isLoading: isLoadingBookings } = useRecentBookingsQuery()
    const { syncMeilisearch, isSyncing } = usePropertiesMutations()
 
-   // Mock data for dashboard components where dedicated APIs are not yet created
    const kpis = [
       {
          title: 'Platform Revenue',
-         value: isLoadingBalance ? 'Loading...' : formatVND(Number(balanceData?.balanceCents || 0)),
+         value: isLoadingOverview ? 'Loading...' : formatVND(Number(overviewData?.platformRevenueCents || 0)),
          description: 'Cumulative transaction service fees',
          icon: DollarSign,
          color: 'text-emerald-600'
       },
       {
          title: 'Total Users',
-         value: '1,248',
-         description: '+12% from last month',
+         value: isLoadingOverview ? 'Loading...' : overviewData?.totalUsers.toString() || '0',
+         description: 'Total registered accounts',
          icon: Users,
          color: 'text-blue-600'
       },
       {
          title: 'Active Listings',
-         value: '312',
-         description: '96% verification rate',
+         value: isLoadingOverview ? 'Loading...' : overviewData?.activeListings.toString() || '0',
+         description: 'Properties available for booking',
          icon: HomeIcon,
          color: 'text-purple-600'
       },
       {
          title: 'Pending KYC Review',
-         value: '5',
+         value: isLoadingOverview ? 'Loading...' : overviewData?.pendingKycCount.toString() || '0',
          description: 'Requires immediate review',
          icon: Fingerprint,
          color: 'text-amber-600'
       }
    ]
 
-   const mockRecentBookings = [
-      {
-         id: 'b_1',
-         guest: 'Anh Nguyen',
-         host: 'Minh Tran',
-         status: 'confirmed',
-         amount: 3500000,
-         date: '2026-07-12'
-      },
-      {
-         id: 'b_2',
-         guest: 'John Doe',
-         host: 'Hoa Pham',
-         status: 'pending',
-         amount: 1800000,
-         date: '2026-07-12'
-      },
-      {
-         id: 'b_3',
-         guest: 'Thao Le',
-         host: 'Hoang Vu',
-         status: 'completed',
-         amount: 5400000,
-         date: '2026-07-11'
-      }
-   ]
+   const mockRecentBookings = recentBookings || []
 
    return (
       <div className="animate-in fade-in space-y-8 duration-300">
@@ -235,7 +210,7 @@ export function OverviewDashboardContainer() {
                                  </span>
                               </TableCell>
                               <TableCell className="text-right font-semibold text-zinc-900">
-                                 {formatVND(b.amount)}
+                                 {formatVND(Number(b.amount))}
                               </TableCell>
                            </TableRow>
                         ))}

@@ -8,17 +8,21 @@ import { GetMeUseCase } from './application/use-cases/get-me.usecase'
 import { UpdateProfileUseCase } from './application/use-cases/update-profile.usecase'
 import { ListAccountsUseCase } from './application/use-cases/list-accounts.usecase'
 import { UpdateAccountStatusUseCase } from './application/use-cases/update-account-status.usecase'
+import { GetAdminStatsUseCase } from './application/use-cases/get-admin-stats.usecase'
+import { AdminStatsController } from './presentation/controllers/admin-stats.controller'
+import { PrismaModule } from '../../prisma/prisma.module'
 
 @Module({
-   imports: [AuthInfrastructureModule],
-   controllers: [AuthController, AdminAccountsController],
+   imports: [AuthInfrastructureModule, PrismaModule],
+   controllers: [AuthController, AdminAccountsController, AdminStatsController],
    providers: [
       SignupUseCase,
       LoginUseCase,
       GetMeUseCase,
       UpdateProfileUseCase,
       ListAccountsUseCase,
-      UpdateAccountStatusUseCase
+      UpdateAccountStatusUseCase,
+      GetAdminStatsUseCase
    ],
    exports: [
       SignupUseCase,

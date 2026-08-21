@@ -27,6 +27,7 @@ const NAV_ITEMS = [
    { label: 'Properties', href: '/properties', icon: HomeIcon },
    { label: 'KYC Queue', href: '/kyc', icon: Fingerprint },
    { label: 'Bookings', href: '/bookings', icon: BookOpen },
+   { label: 'Penalties', href: '/penalties', icon: ShieldAlert },
    { label: 'Ledger', href: '/ledger', icon: Receipt }
 ]
 
