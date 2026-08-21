@@ -41,7 +41,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
 
       const record = await this.prisma.ledger_accounts.findFirst({
          where: {
-            owner_type: ownerType as ledger_owner_type,
+            owner_type: ownerType,
             owner_account_id: ownerAccountId,
             account_subtype: normalizedSubtype,
             currency: normalizedCurrency
@@ -56,14 +56,14 @@ export class LedgerPrismaRepository implements LedgerRepository {
       const record = await this.prisma.ledger_accounts.upsert({
          where: { id: account.id },
          update: {
-            owner_type: account.ownerType as ledger_owner_type,
+            owner_type: account.ownerType,
             owner_account_id: account.ownerAccountId,
             account_subtype: account.accountSubtype,
             currency: account.currency
          },
          create: {
             id: account.id,
-            owner_type: account.ownerType as ledger_owner_type,
+            owner_type: account.ownerType,
             owner_account_id: account.ownerAccountId,
             account_subtype: account.accountSubtype,
             currency: account.currency,
@@ -151,7 +151,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
       return new LedgerTransaction(
          record.id,
          record.idempotency_key,
-         record.type as LedgerTxnType,
+         record.type,
          record.booking_id,
          record.description,
          record.metadata,
@@ -183,7 +183,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
       return new LedgerTransaction(
          record.id,
          record.idempotency_key,
-         record.type as LedgerTxnType,
+         record.type,
          record.booking_id,
          record.description,
          record.metadata,
@@ -200,7 +200,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
             data: {
                id: transaction.id,
                idempotency_key: transaction.idempotencyKey,
-               type: transaction.type as ledger_txn_type,
+               type: transaction.type,
                booking_id: transaction.bookingId,
                description: transaction.description,
                metadata: transaction.metadata || undefined,

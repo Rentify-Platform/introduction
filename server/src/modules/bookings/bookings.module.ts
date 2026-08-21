@@ -3,6 +3,7 @@ import { AuthModule } from '../auth/auth.module'
 import { ListingsModule } from '../listings/listings.module'
 import { BookingsInfrastructureModule } from './infrastructure/bookings.infrastructure.module'
 import { BookingsController } from './presentation/controllers/bookings.controller'
+import { AdminBookingsController } from './presentation/controllers/admin-bookings.controller'
 import { CreateBookingUseCase } from './application/use-cases/create-booking.usecase'
 import { GetBookingDetailsUseCase } from './application/use-cases/get-booking-details.usecase'
 import { ConfirmSepayPaymentUseCase } from './application/use-cases/confirm-sepay-payment.usecase'
@@ -13,6 +14,7 @@ import { GetHostBookingsUseCase } from './application/use-cases/get-host-booking
 import { ApproveBookingUseCase } from './application/use-cases/approve-booking.usecase'
 import { DeclineBookingUseCase } from './application/use-cases/decline-booking.usecase'
 import { ExpireApprovalBookingUseCase } from './application/use-cases/expire-approval-booking.usecase'
+import { ListAllBookingsUseCase } from './application/use-cases/list-all-bookings.usecase'
 import { LedgerModule } from '../ledger/ledger.module'
 import { PrismaModule } from '../../prisma/prisma.module'
 import { BookingsScheduler } from './presentation/schedulers/bookings.scheduler'
@@ -27,7 +29,7 @@ import { RedisModule } from '../../shared/redis/redis.module'
       PrismaModule,
       RedisModule
    ],
-   controllers: [BookingsController],
+   controllers: [BookingsController, AdminBookingsController],
    providers: [
       CreateBookingUseCase,
       GetBookingDetailsUseCase,
@@ -39,6 +41,7 @@ import { RedisModule } from '../../shared/redis/redis.module'
       ApproveBookingUseCase,
       DeclineBookingUseCase,
       ExpireApprovalBookingUseCase,
+      ListAllBookingsUseCase,
       BookingsScheduler
    ],
    exports: [
@@ -52,7 +55,8 @@ import { RedisModule } from '../../shared/redis/redis.module'
       ApproveBookingUseCase,
       DeclineBookingUseCase,
       ExpireApprovalBookingUseCase,
+      ListAllBookingsUseCase,
       BookingsInfrastructureModule
    ]
- })
- export class BookingsModule {}
+})
+export class BookingsModule {}

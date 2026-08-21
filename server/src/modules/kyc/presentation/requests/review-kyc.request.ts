@@ -8,7 +8,10 @@ export class ReviewKycRequest {
    @IsIn(['approve', 'reject'], { message: "Action must be either 'approve' or 'reject'" })
    action: 'approve' | 'reject'
 
-   @ApiPropertyOptional({ description: 'Reason for rejection if action is reject', example: 'Image is blurry' })
+   @ApiPropertyOptional({
+      description: 'Reason for rejection if action is reject',
+      example: 'Image is blurry'
+   })
    @IsOptional()
    @IsString()
    rejectionReason?: string

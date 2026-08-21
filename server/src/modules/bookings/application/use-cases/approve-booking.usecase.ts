@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common'
+import {
+   Injectable,
+   NotFoundException,
+   BadRequestException,
+   ForbiddenException
+} from '@nestjs/common'
 import { BookingsRepository } from '../../domain/repositories/bookings.repository'
 import { Booking } from '../../domain/entities/booking.entity'
 import { BookedDatesCachePort } from '../ports/booked-dates-cache.port'
@@ -6,7 +11,8 @@ import { BookedDatesCachePort } from '../ports/booked-dates-cache.port'
 export class ApproveBookingCommand {
    constructor(
       public readonly bookingId: string,
-      public readonly hostId: string
+      public readonly hostId: string,
+      public readonly actorRole: string = 'host'
    ) {}
 }
 
@@ -26,11 +32,13 @@ export class ApproveBookingUseCase {
 
       // 2.   Verify the booking status is pending host approval
       if (booking.status !== 'pending_approval') {
-         throw new BadRequestException(`Booking cannot be approved in its current status: ${booking.status}`)
+         throw new BadRequestException(
+            `Booking cannot be approved in its current status: ${booking.status}`
+         )
       }
 
-      // 3.   Authorize that the user executing this is the actual host of the property
-      if (booking.hostId !== command.hostId) {
+      // 3.   Authorize that the user executing this is the actual host of the property (admins bypass)
+      if (command.actorRole !== 'admin' && booking.hostId !== command.hostId) {
          throw new ForbiddenException('You are not authorized to approve this booking')
       }
 

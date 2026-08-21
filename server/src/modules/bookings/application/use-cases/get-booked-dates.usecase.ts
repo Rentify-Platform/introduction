@@ -19,7 +19,8 @@ export class GetBookedDatesUseCase {
 
       if (dates === null) {
          // Cache miss: load active bookings from database, extract dates, and populate cache
-         const activeBookings = await this.bookingsRepository.findActiveBookingsByPropertyId(propertyId)
+         const activeBookings =
+            await this.bookingsRepository.findActiveBookingsByPropertyId(propertyId)
          const dbBookedDates: string[] = []
          for (const ab of activeBookings) {
             const abDates = this.generateDateStrings(ab.checkIn, ab.checkOut)

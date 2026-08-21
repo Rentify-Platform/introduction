@@ -25,11 +25,36 @@ export class AdminAccountsController {
    @Get()
    @Authorize('admin')
    @ApiOperation({ summary: 'List user accounts with pagination and filtering (Admin only)' })
-   @ApiQuery({ name: 'search', required: false, type: String, description: 'Search term by email or name' })
-   @ApiQuery({ name: 'role', required: false, type: String, description: 'Filter by role (guest, host, admin)' })
-   @ApiQuery({ name: 'status', required: false, type: String, description: 'Filter by status (active, suspended, banned)' })
-   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default 1)' })
-   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default 20)' })
+   @ApiQuery({
+      name: 'search',
+      required: false,
+      type: String,
+      description: 'Search term by email or name'
+   })
+   @ApiQuery({
+      name: 'role',
+      required: false,
+      type: String,
+      description: 'Filter by role (guest, host, admin)'
+   })
+   @ApiQuery({
+      name: 'status',
+      required: false,
+      type: String,
+      description: 'Filter by status (active, suspended, banned)'
+   })
+   @ApiQuery({
+      name: 'page',
+      required: false,
+      type: Number,
+      description: 'Page number (default 1)'
+   })
+   @ApiQuery({
+      name: 'limit',
+      required: false,
+      type: Number,
+      description: 'Items per page (default 20)'
+   })
    async listAccounts(
       @Query('search') search?: string,
       @Query('role') role?: string,

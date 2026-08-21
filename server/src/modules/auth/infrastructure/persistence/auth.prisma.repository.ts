@@ -156,11 +156,11 @@ export class AuthPrismaRepository implements AccountRepository {
       const where: Record<string, unknown> = { deleted_at: null }
 
       if (filter.role) {
-         where['role'] = filter.role as account_role
+         where['role'] = filter.role
       }
 
       if (filter.status) {
-         where['status'] = filter.status as account_status
+         where['status'] = filter.status
       }
 
       if (filter.search) {
@@ -193,7 +193,7 @@ export class AuthPrismaRepository implements AccountRepository {
                record.email,
                record.phone,
                record.password_hash,
-               record.role as AccountRole,
+               record.role,
                record.status,
                record.profiles?.first_name || '',
                record.profiles?.last_name || '',
@@ -209,14 +209,11 @@ export class AuthPrismaRepository implements AccountRepository {
       return { data, total, page, limit }
    }
 
-   async updateStatus(
-      id: string,
-      status: 'active' | 'suspended' | 'banned'
-   ): Promise<Account> {
+   async updateStatus(id: string, status: 'active' | 'suspended' | 'banned'): Promise<Account> {
       // 1. Update the account status and return the updated record with profile
       const record = await this.prisma.accounts.update({
          where: { id },
-         data: { status: status as account_status, updated_at: new Date() },
+         data: { status: status, updated_at: new Date() },
          include: { profiles: true }
       })
 
@@ -225,7 +222,7 @@ export class AuthPrismaRepository implements AccountRepository {
          record.email,
          record.phone,
          record.password_hash,
-         record.role as AccountRole,
+         record.role,
          record.status,
          record.profiles?.first_name || '',
          record.profiles?.last_name || '',

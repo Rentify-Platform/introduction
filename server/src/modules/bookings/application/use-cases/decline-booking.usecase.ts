@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common'
+import {
+   Injectable,
+   NotFoundException,
+   BadRequestException,
+   ForbiddenException
+} from '@nestjs/common'
 import { BookingsRepository } from '../../domain/repositories/bookings.repository'
 import { Booking } from '../../domain/entities/booking.entity'
 import { BookedDatesCachePort } from '../ports/booked-dates-cache.port'
@@ -14,7 +19,8 @@ export class DeclineBookingCommand {
    constructor(
       public readonly bookingId: string,
       public readonly hostId: string,
-      public readonly reason: string | null
+      public readonly reason: string | null,
+      public readonly actorRole: string = 'host'
    ) {}
 }
 
@@ -36,11 +42,13 @@ export class DeclineBookingUseCase {
 
       // 2.   Verify the booking status is pending host approval
       if (booking.status !== 'pending_approval') {
-         throw new BadRequestException(`Booking cannot be declined in its current status: ${booking.status}`)
+         throw new BadRequestException(
+            `Booking cannot be declined in its current status: ${booking.status}`
+         )
       }
 
-      // 3.   Authorize that the user executing this is the actual host of the property
-      if (booking.hostId !== command.hostId) {
+      // 3.   Authorize that the user executing this is the actual host of the property (admins bypass)
+      if (command.actorRole !== 'admin' && booking.hostId !== command.hostId) {
          throw new ForbiddenException('You are not authorized to decline this booking')
       }
 
@@ -76,7 +84,7 @@ export class DeclineBookingUseCase {
             'refund',
             booking.id,
             `Refund processed for declined booking ${booking.id}`,
-            { cancelledBy: command.hostId, role: 'host' },
+            { cancelledBy: command.hostId, role: command.actorRole },
             command.hostId,
             ledgerEntries
          )
@@ -91,8 +99,10 @@ export class DeclineBookingUseCase {
             data: {
                booking_id: booking.id,
                cancelled_by_account_id: command.hostId,
-               cancelled_by_role: 'host' as cancelled_by_role,
-               days_before_checkin: Math.ceil((booking.checkIn.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+               cancelled_by_role: command.actorRole as cancelled_by_role,
+               days_before_checkin: Math.ceil(
+                  (booking.checkIn.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+               ),
                applied_policy_code: booking.cancellationPolicyCode,
                applied_tier_id: null,
                guest_refund_cents: booking.totalPriceCents,
@@ -130,7 +140,7 @@ export class DeclineBookingUseCase {
          await tx.bookings.update({
             where: { id: booking.id },
             data: {
-               status: newStatus as booking_status,
+               status: newStatus,
                cancelled_at: declinedBooking.cancelledAt,
                updated_at: declinedBooking.updatedAt
             }

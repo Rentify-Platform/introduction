@@ -41,12 +41,18 @@ export class SubmitKycRequest {
    @IsString()
    documentNumber?: string
 
-   @ApiProperty({ description: 'Front side document image/file URL', example: 'https://example.com/kyc-front.jpg' })
+   @ApiProperty({
+      description: 'Front side document image/file URL',
+      example: 'https://example.com/kyc-front.jpg'
+   })
    @IsNotEmpty({ message: 'Front image URL is required' })
    @IsString()
    fileUrlFront: string
 
-   @ApiPropertyOptional({ description: 'Back side document image/file URL', example: 'https://example.com/kyc-back.jpg' })
+   @ApiPropertyOptional({
+      description: 'Back side document image/file URL',
+      example: 'https://example.com/kyc-back.jpg'
+   })
    @IsOptional()
    @IsString()
    fileUrlBack?: string

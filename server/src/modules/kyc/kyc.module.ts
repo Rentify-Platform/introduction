@@ -12,6 +12,12 @@ import { GetPendingKycUseCase } from './application/use-cases/get-pending-kyc.us
    imports: [KycInfrastructureModule, AuthModule],
    controllers: [GuestKycController, AdminKycController],
    providers: [SubmitGuestKycUseCase, ReviewKycUseCase, RescreenKycUseCase, GetPendingKycUseCase],
-   exports: [SubmitGuestKycUseCase, ReviewKycUseCase, RescreenKycUseCase, GetPendingKycUseCase, KycInfrastructureModule]
+   exports: [
+      SubmitGuestKycUseCase,
+      ReviewKycUseCase,
+      RescreenKycUseCase,
+      GetPendingKycUseCase,
+      KycInfrastructureModule
+   ]
 })
 export class KycModule {}

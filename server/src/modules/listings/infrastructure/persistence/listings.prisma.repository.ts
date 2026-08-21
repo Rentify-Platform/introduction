@@ -368,7 +368,7 @@ export class ListingsPrismaRepository implements ListingsRepository {
          record.issuing_authority,
          record.file_url,
          record.expiry_date,
-         record.status as any,
+         record.status,
          record.verified_at,
          record.created_at
       )
@@ -385,7 +385,7 @@ export class ListingsPrismaRepository implements ListingsRepository {
       const where: Record<string, unknown> = {}
 
       if (filter.status) {
-         where['status'] = filter.status as property_status
+         where['status'] = filter.status
       }
 
       if (filter.hostId) {
@@ -474,7 +474,7 @@ export class ListingsPrismaRepository implements ListingsRepository {
       const record = await this.prisma.properties.update({
          where: { id },
          data: {
-            status: status as property_status,
+            status: status,
             updated_at: new Date(),
             deleted_at: status === 'archived' ? new Date() : null
          },
@@ -494,8 +494,8 @@ export class ListingsPrismaRepository implements ListingsRepository {
          record.id,
          record.host_id,
          record.property_type_id,
-         record.room_type as PropertyRoomType,
-         record.status as PropertyStatus,
+         record.room_type,
+         record.status,
          record.title,
          record.description,
          record.address_line1,

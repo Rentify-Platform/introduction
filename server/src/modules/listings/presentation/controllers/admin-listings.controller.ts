@@ -30,11 +30,31 @@ export class AdminListingsController {
    @Get()
    @Authorize('admin')
    @ApiOperation({ summary: 'List all properties with filters (Admin only)' })
-   @ApiQuery({ name: 'search', required: false, type: String, description: 'Search term by title or city' })
-   @ApiQuery({ name: 'status', required: false, type: String, description: 'Filter by status (draft, published, paused, archived)' })
+   @ApiQuery({
+      name: 'search',
+      required: false,
+      type: String,
+      description: 'Search term by title or city'
+   })
+   @ApiQuery({
+      name: 'status',
+      required: false,
+      type: String,
+      description: 'Filter by status (draft, published, paused, archived)'
+   })
    @ApiQuery({ name: 'hostId', required: false, type: String, description: 'Filter by Host UUID' })
-   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default 1)' })
-   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default 20)' })
+   @ApiQuery({
+      name: 'page',
+      required: false,
+      type: Number,
+      description: 'Page number (default 1)'
+   })
+   @ApiQuery({
+      name: 'limit',
+      required: false,
+      type: Number,
+      description: 'Items per page (default 20)'
+   })
    async listProperties(
       @Query('search') search?: string,
       @Query('status') status?: string,

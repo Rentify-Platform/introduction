@@ -33,7 +33,7 @@ describe('GetBalanceUseCase', () => {
       }).compile()
 
       useCase = module.get<GetBalanceUseCase>(GetBalanceUseCase)
-      repository = module.get(LedgerRepository) as jest.Mocked<LedgerRepository>
+      repository = module.get(LedgerRepository)
    })
 
    it('should retrieve balance by account ID successfully', async () => {

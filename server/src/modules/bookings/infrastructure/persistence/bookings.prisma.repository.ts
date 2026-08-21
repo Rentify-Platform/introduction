@@ -2,8 +2,12 @@ import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../../prisma/prisma.service'
 import { Booking, BookingStatus } from '../../domain/entities/booking.entity'
 import { Payment, PaymentStatus } from '../../domain/entities/payment.entity'
-import { BookingsRepository } from '../../domain/repositories/bookings.repository'
-import { booking_status, payment_status } from '@prisma/client'
+import {
+   BookingsRepository,
+   FindAllBookingsFilter,
+   PaginatedAdminBookings
+} from '../../domain/repositories/bookings.repository'
+import { booking_status, payment_status, Prisma } from '@prisma/client'
 
 @Injectable()
 export class BookingsPrismaRepository implements BookingsRepository {
@@ -63,7 +67,7 @@ export class BookingsPrismaRepository implements BookingsRepository {
       const record = await this.prisma.bookings.upsert({
          where: { id: booking.id },
          update: {
-            status: booking.status as booking_status,
+            status: booking.status,
             cancelled_at: booking.cancelledAt,
             updated_at: booking.updatedAt
          },
@@ -72,7 +76,7 @@ export class BookingsPrismaRepository implements BookingsRepository {
             property_id: booking.propertyId,
             guest_id: booking.guestId,
             host_id: booking.hostId,
-            status: booking.status as booking_status,
+            status: booking.status,
             check_in: booking.checkIn,
             check_out: booking.checkOut,
             guests_count: booking.guestsCount,
@@ -147,7 +151,7 @@ export class BookingsPrismaRepository implements BookingsRepository {
       const record = await this.prisma.payments.upsert({
          where: { id: payment.id },
          update: {
-            status: payment.status as payment_status,
+            status: payment.status,
             failure_reason: payment.failureReason,
             updated_at: payment.updatedAt
          },
@@ -156,7 +160,7 @@ export class BookingsPrismaRepository implements BookingsRepository {
             booking_id: payment.bookingId,
             payment_method_id: payment.paymentMethodId,
             ledger_transaction_id: payment.ledgerTransactionId,
-            status: payment.status as payment_status,
+            status: payment.status,
             amount_cents: payment.amountCents,
             currency: payment.currency,
             provider: payment.provider,
@@ -199,5 +203,121 @@ export class BookingsPrismaRepository implements BookingsRepository {
          }
       })
       return records.map((r) => this.mapToBookingEntity(r))
+   }
+
+   async findAll(filter: FindAllBookingsFilter): Promise<PaginatedAdminBookings> {
+      const where: Prisma.bookingsWhereInput = {}
+      if (filter.status) {
+         where.status = filter.status as booking_status
+      }
+      if (filter.guestId) {
+         where.guest_id = filter.guestId
+      }
+      if (filter.hostId) {
+         where.host_id = filter.hostId
+      }
+      if (filter.propertyId) {
+         where.property_id = filter.propertyId
+      }
+      if (filter.search) {
+         const term = filter.search.trim()
+         const nameContains = { contains: term, mode: 'insensitive' as const }
+         where.OR = [
+            {
+               accounts_bookings_guest_idToaccounts: {
+                  email: { contains: term, mode: 'insensitive' }
+               }
+            },
+            {
+               accounts_bookings_guest_idToaccounts: {
+                  profiles: {
+                     OR: [{ first_name: nameContains }, { last_name: nameContains }]
+                  }
+               }
+            },
+            {
+               accounts_bookings_host_idToaccounts: {
+                  email: { contains: term, mode: 'insensitive' }
+               }
+            },
+            {
+               accounts_bookings_host_idToaccounts: {
+                  profiles: {
+                     OR: [{ first_name: nameContains }, { last_name: nameContains }]
+                  }
+               }
+            },
+            { properties: { title: { contains: term, mode: 'insensitive' } } }
+         ]
+      }
+
+      const [records, total] = await Promise.all([
+         this.prisma.bookings.findMany({
+            where,
+            orderBy: { created_at: 'desc' },
+            skip: (filter.page - 1) * filter.limit,
+            take: filter.limit,
+            include: {
+               accounts_bookings_guest_idToaccounts: { include: { profiles: true } },
+               accounts_bookings_host_idToaccounts: { include: { profiles: true } },
+               properties: { select: { id: true, title: true, city: true } },
+               payments: true
+            }
+         }),
+         this.prisma.bookings.count({ where })
+      ])
+
+      const data = records.map((record) => {
+         const guestAccount = record.accounts_bookings_guest_idToaccounts
+         const hostAccount = record.accounts_bookings_host_idToaccounts
+         const paymentRecord = record.payments.length > 0 ? record.payments[0] : null
+
+         return {
+            booking: this.mapToBookingEntity(record),
+            payment: paymentRecord ? this.mapToPaymentEntity(paymentRecord) : null,
+            guest: guestAccount
+               ? {
+                    email: guestAccount.email,
+                    firstName: guestAccount.profiles?.first_name ?? '',
+                    lastName: guestAccount.profiles?.last_name ?? ''
+                 }
+               : null,
+            host: hostAccount
+               ? {
+                    email: hostAccount.email,
+                    firstName: hostAccount.profiles?.first_name ?? '',
+                    lastName: hostAccount.profiles?.last_name ?? ''
+                 }
+               : null,
+            property: record.properties
+               ? { title: record.properties.title, city: record.properties.city }
+               : null
+         }
+      })
+
+      return {
+         data,
+         total,
+         page: filter.page,
+         limit: filter.limit
+      }
+   }
+
+   async findByIdWithRelations(
+      id: string
+   ): Promise<{ booking: Booking; payment: Payment | null } | null> {
+      const record = await this.prisma.bookings.findUnique({
+         where: { id },
+         include: { payments: true }
+      })
+      if (!record) return null
+
+      const paymentRecords = record.payments
+      const paymentRecord = paymentRecords.length > 0 ? paymentRecords[0] : null
+
+      return {
+         booking: this.mapToBookingEntity(record),
+         payment: paymentRecord ? this.mapToPaymentEntity(paymentRecord) : null
+      }
    }
 }

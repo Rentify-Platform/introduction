@@ -11,17 +11,27 @@ import {
 import { Type } from 'class-transformer'
 
 export class PostTransactionEntryRequest {
-   @ApiPropertyOptional({ description: 'Ledger account ID', example: 'd0c2980e-3995-4fee-9b0e-bbadc3651c06' })
+   @ApiPropertyOptional({
+      description: 'Ledger account ID',
+      example: 'd0c2980e-3995-4fee-9b0e-bbadc3651c06'
+   })
    @IsOptional()
    @IsString()
    ledgerAccountId?: string
 
-   @ApiPropertyOptional({ description: 'Owner type', enum: ['platform', 'host', 'guest', 'tax_authority'], example: 'host' })
+   @ApiPropertyOptional({
+      description: 'Owner type',
+      enum: ['platform', 'host', 'guest', 'tax_authority'],
+      example: 'host'
+   })
    @IsOptional()
    @IsEnum(['platform', 'host', 'guest', 'tax_authority'])
    ownerType?: string
 
-   @ApiPropertyOptional({ description: 'Owner account ID', example: 'd0c2980e-3995-4fee-9b0e-bbadc3651c06' })
+   @ApiPropertyOptional({
+      description: 'Owner account ID',
+      example: 'd0c2980e-3995-4fee-9b0e-bbadc3651c06'
+   })
    @IsOptional()
    @IsString()
    ownerAccountId?: string
@@ -43,7 +53,10 @@ export class PostTransactionEntryRequest {
 }
 
 export class PostTransactionRequest {
-   @ApiProperty({ description: 'Unique idempotency key to prevent double posting', example: 'tx-12345-abc' })
+   @ApiProperty({
+      description: 'Unique idempotency key to prevent double posting',
+      example: 'tx-12345-abc'
+   })
    @IsNotEmpty()
    @IsString()
    idempotencyKey: string
@@ -73,21 +86,33 @@ export class PostTransactionRequest {
    ])
    type: string
 
-   @ApiPropertyOptional({ description: 'Associated booking ID', example: '7c123f66-a264-4ec8-b010-09350fbcc27c' })
+   @ApiPropertyOptional({
+      description: 'Associated booking ID',
+      example: '7c123f66-a264-4ec8-b010-09350fbcc27c'
+   })
    @IsOptional()
    @IsString()
    bookingId?: string
 
-   @ApiPropertyOptional({ description: 'Transaction description', example: 'Booking payout for reservation' })
+   @ApiPropertyOptional({
+      description: 'Transaction description',
+      example: 'Booking payout for reservation'
+   })
    @IsOptional()
    @IsString()
    description?: string
 
-   @ApiPropertyOptional({ description: 'Arbitrary metadata JSON object', example: { note: 'manual adjustment' } })
+   @ApiPropertyOptional({
+      description: 'Arbitrary metadata JSON object',
+      example: { note: 'manual adjustment' }
+   })
    @IsOptional()
    metadata?: any
 
-   @ApiProperty({ description: 'List of double-entry transaction lines', type: [PostTransactionEntryRequest] })
+   @ApiProperty({
+      description: 'List of double-entry transaction lines',
+      type: [PostTransactionEntryRequest]
+   })
    @IsArray()
    @ValidateNested({ each: true })
    @Type(() => PostTransactionEntryRequest)

@@ -12,13 +12,21 @@ import {
 import { Type } from 'class-transformer'
 
 export class IdentityInput {
-   @ApiProperty({ description: 'Document type', enum: ['passport', 'national_id', 'drivers_license'], example: 'passport' })
+   @ApiProperty({
+      description: 'Document type',
+      enum: ['passport', 'national_id', 'drivers_license'],
+      example: 'passport'
+   })
    @IsNotEmpty()
    @IsString()
    @IsIn(['passport', 'national_id', 'drivers_license'])
    docType: string
 
-   @ApiPropertyOptional({ description: 'Country code (ISO-2 or ISO-3)', example: 'VN', nullable: true })
+   @ApiPropertyOptional({
+      description: 'Country code (ISO-2 or ISO-3)',
+      example: 'VN',
+      nullable: true
+   })
    @IsOptional()
    @IsString()
    @Length(2, 3)
@@ -29,29 +37,48 @@ export class IdentityInput {
    @IsString()
    documentNumber?: string | null
 
-   @ApiProperty({ description: 'Front document file URL', example: 'https://example.com/front.jpg' })
+   @ApiProperty({
+      description: 'Front document file URL',
+      example: 'https://example.com/front.jpg'
+   })
    @IsNotEmpty()
    @IsString()
    fileUrlFront: string
 
-   @ApiPropertyOptional({ description: 'Back document file URL', example: 'https://example.com/back.jpg', nullable: true })
+   @ApiPropertyOptional({
+      description: 'Back document file URL',
+      example: 'https://example.com/back.jpg',
+      nullable: true
+   })
    @IsOptional()
    @IsString()
    fileUrlBack?: string | null
 
-   @ApiPropertyOptional({ description: 'Document issue date (ISO)', example: '2020-01-01', nullable: true })
+   @ApiPropertyOptional({
+      description: 'Document issue date (ISO)',
+      example: '2020-01-01',
+      nullable: true
+   })
    @IsOptional()
    @IsDateString()
    issueDate?: string | null
 
-   @ApiPropertyOptional({ description: 'Document expiry date (ISO)', example: '2030-01-01', nullable: true })
+   @ApiPropertyOptional({
+      description: 'Document expiry date (ISO)',
+      example: '2030-01-01',
+      nullable: true
+   })
    @IsOptional()
    @IsDateString()
    expiryDate?: string | null
 }
 
 export class RegisterHostRequest {
-   @ApiPropertyOptional({ description: 'Host identity verification info', type: IdentityInput, nullable: true })
+   @ApiPropertyOptional({
+      description: 'Host identity verification info',
+      type: IdentityInput,
+      nullable: true
+   })
    @IsOptional()
    @ValidateNested()
    @Type(() => IdentityInput)
