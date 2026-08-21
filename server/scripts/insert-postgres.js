@@ -184,6 +184,16 @@ async function main() {
 
       // Cleanup
       console.log('Clearing old transaction logs, reviews, bookings, and listings...')
+      await client.query("SET session_replication_role = 'replica'")
+      await client.query('DELETE FROM kyc_documents')
+      await client.query('DELETE FROM kyc_checks')
+      await client.query('DELETE FROM cancellations')
+      await client.query('DELETE FROM host_penalties')
+      await client.query('DELETE FROM payouts')
+      await client.query('DELETE FROM ledger_entries')
+      await client.query('DELETE FROM ledger_transactions')
+      await client.query('DELETE FROM ledger_balances')
+      await client.query('DELETE FROM ledger_accounts')
       await client.query('DELETE FROM reviews')
       await client.query('DELETE FROM bookings')
       await client.query('DELETE FROM property_calendar')
@@ -192,6 +202,7 @@ async function main() {
       await client.query('DELETE FROM property_licenses')
       await client.query('DELETE FROM wishlist_items')
       await client.query('DELETE FROM properties')
+      await client.query("SET session_replication_role = 'origin'")
 
        // Seed property_types lookup table
        await client.query(`

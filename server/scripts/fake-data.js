@@ -160,11 +160,19 @@ async function main() {
       await client.query('BEGIN')
 
       // Clean existing ledger & bookings data to avoid unique constraint conflicts
+      await client.query("SET session_replication_role = 'replica'");
+      await client.query('DELETE FROM kyc_documents')
+      await client.query('DELETE FROM kyc_checks')
+      await client.query('DELETE FROM cancellations')
+      await client.query('DELETE FROM host_penalties')
+      await client.query('DELETE FROM payouts')
       await client.query('DELETE FROM ledger_entries')
       await client.query('DELETE FROM ledger_transactions')
+      await client.query('DELETE FROM ledger_balances')
       await client.query('DELETE FROM ledger_accounts')
       await client.query('DELETE FROM reviews')
       await client.query('DELETE FROM bookings')
+      await client.query("SET session_replication_role = 'origin'");
 
       // 0. Fix uuidv7 function & seed extensions / lookup tables
       await client.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`)
@@ -213,7 +221,7 @@ async function main() {
          INSERT INTO host_profiles (account_id, is_superhost, kyc_status, tax_verified, payout_account_verified, created_at, updated_at)
          VALUES 
             ('${HOST_ID}', true, 'verified', true, true, NOW(), NOW())
-         ON CONFLICT (account_id) DO NOTHING
+         ON CONFLICT (account_id) DO UPDATE SET tax_verified = TRUE, payout_account_verified = TRUE
       `)
 
       // 2. New hosts & guests
@@ -223,7 +231,7 @@ async function main() {
          await client.query(`INSERT INTO profiles (account_id, first_name, last_name, guest_kyc_status, bio)
             VALUES ($1,$2,$3,'verified',$4) ON CONFLICT (account_id) DO NOTHING`, [h.id, h.first, h.last, 'Host on Rentify.'])
          await client.query(`INSERT INTO host_profiles (account_id, about, is_superhost, response_rate_pct, kyc_status, tax_verified, payout_account_verified, became_host_at)
-            VALUES ($1,$2,$3,$4,$5,TRUE,TRUE,NOW()) ON CONFLICT (account_id) DO NOTHING`,
+            VALUES ($1,$2,$3,$4,$5,TRUE,TRUE,NOW()) ON CONFLICT (account_id) DO UPDATE SET tax_verified = TRUE, payout_account_verified = TRUE`,
             [h.id, 'Friendly host', h.superhost, h.rr, h.kyc])
       }
 
@@ -400,6 +408,71 @@ async function main() {
          }
       }
       console.log('· bookings, reviews & ledger entries OK')
+
+      // 6. Fake Payouts
+      for (const hid of allHosts) {
+         const prop = ALL_PROPERTIES.find(p => p.host === hid)
+         const curr = prop ? prop.currency : 'VND'
+         const clearingAccId = ledgerAccountMap.get(`platform:null:clearing:${curr}`)
+         const hostPayableAccId = ledgerAccountMap.get(`host:${hid}:payable:${curr}`)
+
+         if (clearingAccId && hostPayableAccId) {
+             const amount = curr === 'USD' ? 50000 : 1000000;
+             const txnId = crypto.randomUUID()
+             await client.query(`
+                INSERT INTO ledger_transactions (id, idempotency_key, type, description, created_at)
+                VALUES ($1, $2, 'payout', 'Weekly host payout', NOW())
+             `, [txnId, crypto.randomUUID()])
+
+             await client.query(`
+                INSERT INTO ledger_entries (transaction_id, ledger_account_id, amount_cents, currency)
+                VALUES 
+                   ($1, $2, $3, $4),
+                   ($1, $5, $6, $4)
+             `, [txnId, hostPayableAccId, -amount, curr, clearingAccId, amount])
+
+             await client.query(`
+                INSERT INTO payouts (id, host_id, ledger_transaction_id, amount_cents, currency, status, scheduled_for, paid_at, created_at)
+                VALUES (gen_random_uuid(), $1, $2, $3, $4, 'paid', NOW(), NOW(), NOW())
+             `, [hid, txnId, amount, curr])
+         }
+      }
+      console.log('· payouts OK')
+
+      // 7. Fake Host Penalties
+      let penaltyCount = 1;
+      for (const hid of allHosts) {
+         const amount = 50000 * penaltyCount; // Just some varying amount
+         await client.query(`
+            INSERT INTO host_penalties (id, host_id, penalty_type, amount_cents, notes, created_at)
+            VALUES (gen_random_uuid(), $1, 'host_cancellation', $2, 'Cancelled booking at the last minute', NOW())
+         `, [hid, amount])
+         penaltyCount++;
+      }
+      console.log('· host penalties OK')
+
+      // 8. Fake KYC Queue
+      for (let i = 0; i < 3; i++) {
+         const h = HOSTS[i]
+         await client.query(`
+            INSERT INTO kyc_documents (id, account_id, doc_type, country_code, file_url_front, status, created_at)
+            VALUES (gen_random_uuid(), $1, 'passport', 'VN', 'https://images.unsplash.com/photo-1633526543814-9718c8922b7a?auto=format&fit=crop&w=600&q=80', 'pending', NOW())
+         `, [h.id])
+      }
+      console.log('· kyc queue OK')
+
+      // 9. Fake Cancellations
+      const { rows: cancelledBookings } = await client.query(`SELECT id, guest_id, host_id, status, total_price_cents FROM bookings WHERE status IN ('cancelled_by_guest', 'cancelled_by_host')`)
+      for (const cb of cancelledBookings) {
+         const role = cb.status === 'cancelled_by_guest' ? 'guest' : 'host'
+         const canceledBy = role === 'guest' ? cb.guest_id : cb.host_id
+         const refund = role === 'host' ? cb.total_price_cents : 10000;
+         await client.query(`
+            INSERT INTO cancellations (id, booking_id, cancelled_by_account_id, cancelled_by_role, reason_text, days_before_checkin, applied_policy_code, guest_refund_cents, host_payout_cents, platform_fee_kept_cents, created_at)
+            VALUES (gen_random_uuid(), $1, $2, $3, 'Change of plans', 5, 'moderate', $4, 0, 0, NOW())
+         `, [cb.id, canceledBy, role, refund])
+      }
+      console.log('· cancellations OK')
 
       await client.query('COMMIT')
       console.log('DONE seeding all accounts, profiles, properties, bookings, reviews, and ledger transactions successfully!')

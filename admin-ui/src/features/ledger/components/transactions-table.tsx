@@ -53,7 +53,7 @@ function truncateId(id: string) {
 function txnNetAmount(txn: LedgerTransaction): number {
    return txn.entries.reduce((sum, entry) => {
       const value = Number(entry.amountCents)
-      return sum + (Number.isFinite(value) ? value : 0)
+      return sum + (Number.isFinite(value) && value > 0 ? value : 0)
    }, 0)
 }
 

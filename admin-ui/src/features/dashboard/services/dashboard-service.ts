@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api/api-client'
+import { ApiResponse } from '@/features/auth/types'
 
 export interface DashboardOverviewStats {
    totalUsers: number
@@ -17,11 +18,11 @@ export interface RecentBooking {
 }
 
 export const getDashboardOverview = async (): Promise<DashboardOverviewStats> => {
-   const response = await apiClient.get<DashboardOverviewStats>('/admin/stats/overview')
-   return response.data
+   const response = await apiClient.get<ApiResponse<DashboardOverviewStats>>('/admin/stats/overview')
+   return response.data?.data
 }
 
 export const getRecentBookings = async (): Promise<RecentBooking[]> => {
-   const response = await apiClient.get<RecentBooking[]>('/admin/stats/recent-bookings')
-   return response.data
+   const response = await apiClient.get<ApiResponse<RecentBooking[]>>('/admin/stats/recent-bookings')
+   return response.data?.data
 }
