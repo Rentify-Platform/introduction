@@ -42,7 +42,7 @@ Về phía **chủ nhà** — họ có phòng trống, nhà vườn ít khi dùn
 
 Hai nhóm người cùng có nhu cầu, nhưng không có cầu nối đáng tin giữa họ.
 
-### Khoảnh khắc "eureka"
+### Khoảnh khắc
 
 Một buổi tối, cả nhóm ngồi lại và vẽ ra bức tranh tổng thể: nếu có một nền tảng mà chủ nhà chỉ cần đăng tin — hệ thống lo phần còn lại (quản lý lịch, thanh toán, xác minh, giải quyết tranh chấp) — thì bài toán sẽ được giải. Và nếu khách thuê có thể tìm kiếm, so sánh, đọc đánh giá, đặt phòng tức thì, biết trước chính sách huỷ — thì sẽ không ai còn phải "đánh cược" khi đặt phòng nữa.
 
