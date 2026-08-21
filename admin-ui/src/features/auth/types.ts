@@ -3,7 +3,7 @@ export interface User {
    email: string
    firstName: string
    lastName: string
-   role: string
+   role: 'guest' | 'host' | 'admin'
    phone?: string | null
    avatarUrl?: string | null
    bio?: string | null
@@ -23,4 +23,11 @@ export interface ApiResponse<T> {
    message: string
    data: T
    timestamp: string
+}
+
+export class AdminAccessDeniedError extends Error {
+   constructor() {
+      super('Only administrators can access this system.')
+      this.name = 'AdminAccessDeniedError'
+   }
 }

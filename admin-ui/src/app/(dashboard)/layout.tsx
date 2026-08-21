@@ -8,8 +8,6 @@ import {
    Users,
    Home as HomeIcon,
    Fingerprint,
-   Receipt,
-   BookOpen,
    LogOut,
    Loader2,
    ShieldAlert,
@@ -25,16 +23,14 @@ const NAV_ITEMS = [
    { label: 'Overview', href: '/', icon: LayoutDashboard },
    { label: 'Users', href: '/users', icon: Users },
    { label: 'Properties', href: '/properties', icon: HomeIcon },
-   { label: 'KYC Queue', href: '/kyc', icon: Fingerprint },
-   { label: 'Bookings', href: '/bookings', icon: BookOpen },
-   { label: 'Ledger', href: '/ledger', icon: Receipt }
+   { label: 'KYC Queue', href: '/kyc', icon: Fingerprint }
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
    const router = useRouter()
    const pathname = usePathname()
-   const { token, user, isAuthenticated, isInitialized } = useAuthStore()
-   const { isLoading } = useCurrentUser()
+   const { token, user, isInitialized } = useAuthStore()
+   const { isLoading, isError, error, refetch } = useCurrentUser()
    const { logout } = useAuthMutations()
    const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
 
@@ -45,20 +41,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
    }, [isInitialized, token, router])
 
-   // Guard for role
-   React.useEffect(() => {
-      if (isInitialized && token && user && user.role !== 'admin') {
-         router.push('/login')
-      }
-   }, [isInitialized, token, user, router])
-
    const handleLogout = async () => {
       await logout()
       router.push('/login')
    }
 
-   // Loading Screen
-   if (!isInitialized || (token && isLoading) || !user) {
+   if (!isInitialized || (token && isLoading)) {
       return (
          <div className="flex h-screen w-screen flex-col items-center justify-center bg-zinc-50 text-zinc-900">
             <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
@@ -67,9 +55,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )
    }
 
-   // Check if role matches just in case
-   if (user.role !== 'admin') {
-      return null
+   if (!token) {
+      return (
+         <div className="flex h-screen w-screen flex-col items-center justify-center bg-zinc-50 text-zinc-900">
+            <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+            <p className="mt-4 text-sm text-zinc-500">Redirecting to administrator login...</p>
+         </div>
+      )
+   }
+
+   if (isError) {
+      return (
+         <div className="flex h-screen w-screen flex-col items-center justify-center bg-zinc-50 px-6 text-center text-zinc-900">
+            <ShieldAlert className="h-10 w-10 text-rose-500" />
+            <h1 className="mt-4 text-xl font-semibold">Unable to verify administrator access</h1>
+            <p className="mt-2 max-w-md text-sm text-zinc-500">
+               {error instanceof Error ? error.message : 'Please try verifying your session again.'}
+            </p>
+            <div className="mt-5 flex gap-3">
+               <Button variant="outline" onClick={() => void refetch()}>
+                  Try Again
+               </Button>
+               <Button onClick={handleLogout}>Return to Login</Button>
+            </div>
+         </div>
+      )
+   }
+
+   if (!user || user.role !== 'admin') {
+      return (
+         <div className="flex h-screen w-screen flex-col items-center justify-center bg-zinc-50 px-6 text-center text-zinc-900">
+            <ShieldAlert className="h-10 w-10 text-rose-500" />
+            <h1 className="mt-4 text-xl font-semibold">Access denied</h1>
+            <p className="mt-2 max-w-md text-sm text-zinc-500">
+               This account does not have permission to access the Rentify Admin dashboard.
+            </p>
+            <Button className="mt-5" onClick={handleLogout}>
+               Return to Login
+            </Button>
+         </div>
+      )
    }
 
    return (

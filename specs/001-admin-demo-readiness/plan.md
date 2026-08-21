@@ -25,14 +25,14 @@ Hoàn thiện vertical demo hiện có của Rentify Admin bằng cách gia cố
 
 ### Pre-design gate
 
-| Principle | Status | Evidence / Plan response |
-|---|---|---|
-| Preserve working behavior/contracts | PASS | Dùng endpoint và response wrapper hiện có; không sửa client guest/host; contract delta chỉ tăng bảo vệ cho dữ liệu platform admin. |
-| Backend admin authorization | PASS | `@Authorize('admin')`/global guard cho mọi endpoint trong phạm vi; thêm test 401/403 và bảo vệ admin account status. |
-| Existing/Clean Architecture | PASS | UI tiếp tục theo `features/*`; rule account/property đặt ở application use case/domain-facing ports, controller chỉ transport. |
-| Real APIs/complete states | PASS | Xóa KPI/booking mock; dùng React Query services hiện có; lập state matrix cho loading/empty/error/unauthorized/success. |
-| Focused demo delivery | PASS | Không bookings/ledger management/rescreen KYC/new role; không dependency/migration dự kiến. |
-| Validate every phase | PASS | Mỗi phase có targeted test + lint/build gate; final integrated demo theo quickstart. |
+| Principle                           | Status | Evidence / Plan response                                                                                                           |
+| ----------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Preserve working behavior/contracts | PASS   | Dùng endpoint và response wrapper hiện có; không sửa client guest/host; contract delta chỉ tăng bảo vệ cho dữ liệu platform admin. |
+| Backend admin authorization         | PASS   | `@Authorize('admin')`/global guard cho mọi endpoint trong phạm vi; thêm test 401/403 và bảo vệ admin account status.               |
+| Existing/Clean Architecture         | PASS   | UI tiếp tục theo `features/*`; rule account/property đặt ở application use case/domain-facing ports, controller chỉ transport.     |
+| Real APIs/complete states           | PASS   | Xóa KPI/booking mock; dùng React Query services hiện có; lập state matrix cho loading/empty/error/unauthorized/success.            |
+| Focused demo delivery               | PASS   | Không bookings/ledger management/rescreen KYC/new role; không dependency/migration dự kiến.                                        |
+| Validate every phase                | PASS   | Mỗi phase có targeted test + lint/build gate; final integrated demo theo quickstart.                                               |
 
 ### Post-design gate
 
@@ -157,7 +157,7 @@ server/src/
 
 ### Phase 8 — Integrated demo and final constitution gate
 
-1. Chuẩn bị persisted demo data bằng seed/database workflow hiện có: active admin, admin khác, guest, host, verified/unverified KYC, properties có verified/missing/unverified license (gồm `requiresLocalLicense=false`), pending KYC và platform/revenue/VND ledger account. Không hard-code records vào UI và không migration.
+1. Do development database có thể trống và không có admin bootstrap API, thêm seed command development-only, idempotent bằng PrismaService + bcrypt hiện có. Command từ chối `NODE_ENV=production`, yêu cầu `ALLOW_DEMO_SEED=true`, đọc bốn password từ environment variables, không log secret, không migration/reset/delete, và upsert dataset tối thiểu: hai active admin, active guest, active host với verified KYC, một pending KYC document, một `requiresLocalLicense=false` property có verified license, cùng platform/revenue/VND ledger account + zero balance. Thêm focused test cho guard, idempotency, roles và counts.
 2. Chạy authorization matrix no-token/invalid/admin/guest/host cho account, property/license, KYC và admin platform-balance routes; xác nhận generic ledger route không bị thay contract.
 3. Chạy login → Overview four real values → Users mutation → Properties/license/activation → KYC approve/reject; reload sau mutation để xác nhận persistence và chạy targeted guest/host regression smoke.
 4. Trong `server`: `npm test -- --runInBand`, `npm run lint`, `npm run build`, và `npm run test:e2e` khi environment sẵn có. Trong `admin-ui`: `npm run lint`, `npm run build`. Ghi toàn bộ command/result/exception vào quickstart.
@@ -176,4 +176,3 @@ server/src/
 ## Complexity Tracking
 
 Không có constitution violation dự kiến. Kế hoạch không thêm migration, dependency hay module tính năng ngoài phạm vi. Nếu implementation phát hiện cần một trong các thay đổi đó, hoặc cần giảm KYC/license activation prerequisites, phải dừng và cập nhật spec/plan trước.
-

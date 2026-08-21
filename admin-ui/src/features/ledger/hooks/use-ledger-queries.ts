@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { ledgerService } from '../services/ledger-service'
+import { getApiErrorStatus } from '@/lib/api/api-client'
 
 export const ledgerQueryKeys = {
    all: ['ledger'] as const,
@@ -15,6 +16,8 @@ export function useLedgerQueries() {
    return {
       balanceData: balanceQuery.data,
       isLoadingBalance: balanceQuery.isLoading,
-      errorBalance: balanceQuery.error
+      errorBalance: balanceQuery.error,
+      isUnauthorizedBalance: getApiErrorStatus(balanceQuery.error) === 403,
+      refetchBalance: balanceQuery.refetch
    }
 }

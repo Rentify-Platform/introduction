@@ -8,9 +8,9 @@ services:
          POSTGRES_USER: rentify
          POSTGRES_PASSWORD: rentify
       ports:
-         - '5432:5432'
+         - '54332:5432'
       volumes:
-         - rentify_pg_data:/var/lib/postgresql/data
+         - rentify_pg18_data:/var/lib/postgresql
          - ./docker/postgres/init-citext.sql:/docker-entrypoint-initdb.d/init-citext.sql:ro
       healthcheck:
          test: ['CMD-SHELL', 'pg_isready -U rentify -d rentify']
@@ -83,6 +83,7 @@ services:
          - server
 
 volumes:
+   rentify_pg18_data:
    rentify_pg_data:
    rentify_redis_data:
    rentify_meili_data:

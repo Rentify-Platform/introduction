@@ -1,249 +1,179 @@
 'use client'
 
-import * as React from 'react'
-import {
-   Users,
-   Home as HomeIcon,
-   Fingerprint,
-   RefreshCw,
-   DollarSign,
-   ArrowUpRight,
-   AlertTriangle
-} from 'lucide-react'
+import { ArrowUpRight, DollarSign, Fingerprint, Home as HomeIcon, Users } from 'lucide-react'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button, buttonVariants } from '@/components/ui/button'
-import {
-   Table,
-   TableBody,
-   TableCell,
-   TableHead,
-   TableHeader,
-   TableRow
-} from '@/components/ui/table'
 import { useLedgerQueries } from '@/features/ledger/hooks/use-ledger-queries'
-import { usePropertiesMutations } from '@/features/properties/hooks/use-properties-mutations'
+import { useUsersQueries } from '@/features/users/hooks/use-users-queries'
+import { usePropertiesQueries } from '@/features/properties/hooks/use-properties-queries'
+import { useKycQueries } from '@/features/kyc/hooks/use-kyc-queries'
 import { formatVND } from '@/lib/utils'
 
+interface MetricCardProps {
+   title: string
+   description: string
+   icon: React.ElementType
+   iconClassName: string
+   value?: string
+   isLoading: boolean
+   error: unknown
+   isUnauthorized: boolean
+   emptyMessage?: string
+   onRetry: () => void
+}
+
+function MetricCard({
+   title,
+   description,
+   icon: Icon,
+   iconClassName,
+   value,
+   isLoading,
+   error,
+   isUnauthorized,
+   emptyMessage,
+   onRetry
+}: MetricCardProps) {
+   return (
+      <Card className="border-zinc-200 bg-white shadow-xs">
+         <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-zinc-500">{title}</CardTitle>
+            <Icon className={`h-5 w-5 ${iconClassName}`} />
+         </CardHeader>
+         <CardContent>
+            {isLoading ? (
+               <div aria-label={`Loading ${title}`} className="space-y-2">
+                  <div className="h-8 w-28 animate-pulse rounded bg-zinc-200" />
+                  <div className="h-3 w-40 animate-pulse rounded bg-zinc-100" />
+               </div>
+            ) : error ? (
+               <div className="space-y-2">
+                  <p className="text-sm font-medium text-rose-600">
+                     {isUnauthorized ? 'Administrator access required' : `Unable to load ${title}`}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={onRetry}>
+                     Try Again
+                  </Button>
+               </div>
+            ) : value === undefined ? (
+               <p className="text-sm text-zinc-500">{emptyMessage || 'No data available'}</p>
+            ) : (
+               <>
+                  <div className="text-2xl font-bold text-zinc-900">{value}</div>
+                  <p className="mt-1 text-xs text-zinc-400">{description}</p>
+               </>
+            )}
+         </CardContent>
+      </Card>
+   )
+}
+
 export function OverviewDashboardContainer() {
-   // Custom query and mutation hooks
-   const { balanceData, isLoadingBalance } = useLedgerQueries()
-   const { syncMeilisearch, isSyncing } = usePropertiesMutations()
-
-   // Mock data for dashboard components where dedicated APIs are not yet created
-   const kpis = [
-      {
-         title: 'Platform Revenue',
-         value: isLoadingBalance ? 'Loading...' : formatVND(Number(balanceData?.balanceCents || 0)),
-         description: 'Cumulative transaction service fees',
-         icon: DollarSign,
-         color: 'text-emerald-600'
-      },
-      {
-         title: 'Total Users',
-         value: '1,248',
-         description: '+12% from last month',
-         icon: Users,
-         color: 'text-blue-600'
-      },
-      {
-         title: 'Active Listings',
-         value: '312',
-         description: '96% verification rate',
-         icon: HomeIcon,
-         color: 'text-purple-600'
-      },
-      {
-         title: 'Pending KYC Review',
-         value: '5',
-         description: 'Requires immediate review',
-         icon: Fingerprint,
-         color: 'text-amber-600'
-      }
-   ]
-
-   const mockRecentBookings = [
-      {
-         id: 'b_1',
-         guest: 'Anh Nguyen',
-         host: 'Minh Tran',
-         status: 'confirmed',
-         amount: 3500000,
-         date: '2026-07-12'
-      },
-      {
-         id: 'b_2',
-         guest: 'John Doe',
-         host: 'Hoa Pham',
-         status: 'pending',
-         amount: 1800000,
-         date: '2026-07-12'
-      },
-      {
-         id: 'b_3',
-         guest: 'Thao Le',
-         host: 'Hoang Vu',
-         status: 'completed',
-         amount: 5400000,
-         date: '2026-07-11'
-      }
-   ]
+   const { balanceData, isLoadingBalance, errorBalance, isUnauthorizedBalance, refetchBalance } =
+      useLedgerQueries()
+   const usersQuery = useUsersQueries({ page: 1, limit: 1 })
+   const propertiesQuery = usePropertiesQueries({ page: 1, limit: 1 })
+   const kycQuery = useKycQueries()
 
    return (
       <div className="animate-in fade-in space-y-8 duration-300">
-         {/* Top Welcome & Quick Actions */}
-         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-               <h2 className="text-3xl font-bold tracking-tight text-zinc-900">
-                  Dashboard Overview
-               </h2>
-               <p className="text-sm text-zinc-500">
-                  Real-time health, statistics, and platform utility controls.
-               </p>
-            </div>
-            <div className="flex items-center gap-3">
-               <Button
-                  disabled={isSyncing}
-                  onClick={() => syncMeilisearch()}
-                  className="border border-zinc-200 bg-white text-zinc-700 shadow-xs hover:bg-zinc-50 hover:text-zinc-900"
-               >
-                  {isSyncing ? (
-                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                     <RefreshCw className="mr-2 h-4 w-4" />
-                  )}
-                  Sync Meilisearch
-               </Button>
-            </div>
+         <div>
+            <h2 className="text-3xl font-bold tracking-tight text-zinc-900">Dashboard Overview</h2>
+            <p className="text-sm text-zinc-500">Live operational data from Rentify APIs.</p>
          </div>
 
-         {/* KPIs Grid */}
          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {kpis.map((kpi, idx) => {
-               const Icon = kpi.icon
-               return (
-                  <Card
-                     key={idx}
-                     className="border-zinc-200 bg-white shadow-xs transition-all duration-200 hover:border-zinc-300"
-                  >
-                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-zinc-500">
-                           {kpi.title}
-                        </CardTitle>
-                        <Icon className={`h-5 w-5 ${kpi.color}`} />
-                     </CardHeader>
-                     <CardContent>
-                        <div className="text-2xl font-bold text-zinc-900">{kpi.value}</div>
-                        <p className="mt-1 text-xs text-zinc-400">{kpi.description}</p>
-                     </CardContent>
-                  </Card>
-               )
-            })}
+            <MetricCard
+               title="Platform Revenue"
+               value={
+                  balanceData
+                     ? `${formatVND(Number(balanceData.balanceCents))} ${balanceData.currency}`
+                     : undefined
+               }
+               description="Current platform revenue ledger balance"
+               icon={DollarSign}
+               iconClassName="text-emerald-600"
+               isLoading={isLoadingBalance}
+               error={errorBalance}
+               isUnauthorized={isUnauthorizedBalance}
+               emptyMessage="Platform balance is unavailable"
+               onRetry={() => void refetchBalance()}
+            />
+            <MetricCard
+               title="Total Users"
+               value={usersQuery.error ? undefined : String(usersQuery.total)}
+               description={usersQuery.total === 0 ? 'No user accounts yet' : 'Platform accounts'}
+               icon={Users}
+               iconClassName="text-blue-600"
+               isLoading={usersQuery.isLoading}
+               error={usersQuery.error}
+               isUnauthorized={usersQuery.isUnauthorized}
+               onRetry={() => void usersQuery.refetch()}
+            />
+            <MetricCard
+               title="Total Properties"
+               value={propertiesQuery.error ? undefined : String(propertiesQuery.total)}
+               description={
+                  propertiesQuery.total === 0 ? 'No properties yet' : 'Host property listings'
+               }
+               icon={HomeIcon}
+               iconClassName="text-purple-600"
+               isLoading={propertiesQuery.isLoading}
+               error={propertiesQuery.error}
+               isUnauthorized={propertiesQuery.isUnauthorized}
+               onRetry={() => void propertiesQuery.refetch()}
+            />
+            <MetricCard
+               title="Pending KYC"
+               value={kycQuery.error ? undefined : String(kycQuery.pendingDocs.length)}
+               description={
+                  kycQuery.pendingDocs.length === 0
+                     ? 'Review queue is empty'
+                     : 'Submissions awaiting review'
+               }
+               icon={Fingerprint}
+               iconClassName="text-amber-600"
+               isLoading={kycQuery.isLoading}
+               error={kycQuery.error}
+               isUnauthorized={kycQuery.isUnauthorized}
+               onRetry={() => void kycQuery.refetch()}
+            />
          </div>
 
-         <div className="grid gap-6 md:grid-cols-2">
-            {/* System Status & Quick Management Links */}
-            <Card className="border-zinc-200 bg-white">
-               <CardHeader>
-                  <CardTitle className="text-lg text-zinc-900">Platform Admin Shortcuts</CardTitle>
-                  <CardDescription className="text-zinc-500">
-                     Direct system overrides and action buttons
-                  </CardDescription>
-               </CardHeader>
-               <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between rounded-xl border border-zinc-200/80 bg-zinc-50 p-3.5">
-                     <div className="flex items-center gap-3">
-                        <Fingerprint className="h-5 w-5 text-pink-500" />
-                        <div>
-                           <p className="text-sm font-semibold text-zinc-800">Manual KYC Queue</p>
-                           <p className="text-xs text-zinc-500">
-                              Review pending host & guest profile verifications
-                           </p>
-                        </div>
-                     </div>
+         <Card className="border-zinc-200 bg-white">
+            <CardHeader>
+               <CardTitle className="text-lg text-zinc-900">Admin Shortcuts</CardTitle>
+               <CardDescription className="text-zinc-500">
+                  Continue to the moderation areas included in this demo.
+               </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-3">
+               {[
+                  { href: '/users', label: 'Manage Users', icon: Users },
+                  { href: '/properties', label: 'Review Properties', icon: HomeIcon },
+                  { href: '/kyc', label: 'Review KYC Queue', icon: Fingerprint }
+               ].map((shortcut) => {
+                  const Icon = shortcut.icon
+                  return (
                      <Link
-                        href="/kyc"
+                        key={shortcut.href}
+                        href={shortcut.href}
                         className={buttonVariants({
-                           variant: 'default',
-                           size: 'sm',
-                           className: 'rounded-lg bg-pink-600 text-white hover:bg-pink-700'
+                           variant: 'outline',
+                           className: 'h-auto justify-between rounded-xl px-4 py-4'
                         })}
                      >
-                        Review <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                        <span className="flex items-center gap-2">
+                           <Icon className="h-4 w-4 text-pink-500" />
+                           {shortcut.label}
+                        </span>
+                        <ArrowUpRight className="h-4 w-4" />
                      </Link>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-xl border border-zinc-200/80 bg-zinc-50 p-3.5">
-                     <div className="flex items-center gap-3">
-                        <AlertTriangle className="h-5 w-5 text-amber-500" />
-                        <div>
-                           <p className="text-sm font-semibold text-zinc-800">Bans & Suspensions</p>
-                           <p className="text-xs text-zinc-500">
-                              Manage account status and platform restrictions
-                           </p>
-                        </div>
-                     </div>
-                     <Link
-                        href="/users"
-                        className={buttonVariants({
-                           variant: 'ghost',
-                           size: 'sm',
-                           className:
-                              'rounded-lg border border-zinc-200 bg-zinc-100 text-zinc-800 hover:bg-zinc-200'
-                        })}
-                     >
-                        Manage <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                     </Link>
-                  </div>
-               </CardContent>
-            </Card>
-
-            {/* Recent Bookings Audits */}
-            <Card className="border-zinc-200 bg-white">
-               <CardHeader>
-                  <CardTitle className="text-lg text-zinc-900">Recent Bookings</CardTitle>
-                  <CardDescription className="text-zinc-500">
-                     Latest bookings posted on the platform
-                  </CardDescription>
-               </CardHeader>
-               <CardContent>
-                  <Table className="border-zinc-200">
-                     <TableHeader className="border-zinc-200">
-                        <TableRow className="border-zinc-150 hover:bg-transparent">
-                           <TableHead className="text-zinc-500">Guest</TableHead>
-                           <TableHead className="text-zinc-500">Host</TableHead>
-                           <TableHead className="text-zinc-500">Status</TableHead>
-                           <TableHead className="text-right text-zinc-500">Amount</TableHead>
-                        </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                        {mockRecentBookings.map((b) => (
-                           <TableRow key={b.id} className="border-zinc-100 hover:bg-zinc-50">
-                              <TableCell className="font-medium text-zinc-900">{b.guest}</TableCell>
-                              <TableCell className="text-zinc-700">{b.host}</TableCell>
-                              <TableCell>
-                                 <span
-                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${
-                                       b.status === 'confirmed'
-                                          ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                                          : b.status === 'pending'
-                                            ? 'border border-amber-200 bg-amber-50 text-amber-700'
-                                            : 'border border-blue-200 bg-blue-50 text-blue-700'
-                                    }`}
-                                 >
-                                    {b.status}
-                                 </span>
-                              </TableCell>
-                              <TableCell className="text-right font-semibold text-zinc-900">
-                                 {formatVND(b.amount)}
-                              </TableCell>
-                           </TableRow>
-                        ))}
-                     </TableBody>
-                  </Table>
-               </CardContent>
-            </Card>
-         </div>
+                  )
+               })}
+            </CardContent>
+         </Card>
       </div>
    )
 }

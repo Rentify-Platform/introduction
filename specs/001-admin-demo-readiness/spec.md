@@ -15,7 +15,7 @@
 - Q: Các state UI bắt buộc áp dụng thế nào? → A: Mọi màn hình/vùng dữ liệu phải có loading, empty, error, unauthorized và success. Riêng login có idle, loading, validation error, authentication error, unauthorized và success redirect; login không có empty state.
 - Q: Sau rebase cần dựa trên code nào? → A: Reinspect code tại branch hiện tại sau latest `origin/main` rebase trước khi chốt plan/tasks; không dựa trên inventory cũ.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Secure Admin Access (Priority: P1)
 
@@ -125,7 +125,7 @@ Là quản trị viên, tôi xem hàng đợi KYC, kiểm tra tài liệu và du
 - API trả 401 khác với 403: UI phân biệt phiên không hợp lệ (yêu cầu đăng nhập lại) và tài khoản không đủ quyền (unauthorized/access denied).
 - Platform ledger chưa có account phù hợp: UI thể hiện chưa có dữ liệu; không hiển thị balance giả và không tự tạo giao dịch.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -167,8 +167,8 @@ Là quản trị viên, tôi xem hàng đợi KYC, kiểm tra tài liệu và du
 
 ## Assumptions and Dependencies
 
-- Có ít nhất một tài khoản admin active phục vụ demo; việc xây giao diện tạo/promote admin không thuộc phạm vi.
-- Dữ liệu demo thật (users, properties, licenses, KYC pending và ledger account) được seed/chuẩn bị qua cơ chế server/database hiện có, không hard-code trong Admin UI.
+- Development database có thể trống và application không có administrator bootstrap flow. Cho phép một seed command development-only, idempotent dùng Prisma schema/service và bcrypt hiện có để tạo đúng dataset tối thiểu phục vụ demo; command phải từ chối production, yêu cầu opt-in rõ ràng và đọc password từ environment variables.
+- Dữ liệu demo thật (hai admin active, guest, host/KYC verified, KYC pending, property/license verified và platform revenue VND ledger balance) được chuẩn bị bằng seed command server được tài liệu hóa; không hard-code trong Admin UI, không migration, không reset/delete dữ liệu hiện có và không dùng danh tính/chứng từ/payment credential thật.
 - Contract hiện có tiếp tục dùng các endpoint `auth`, `admin/accounts`, `admin/properties`, `admin/kyc` và ledger balance; chỉ chỉnh tối thiểu khi cần bảo vệ platform balance hoặc hoàn thiện trạng thái.
 - Search/filter giữ semantics backend hiện có; không bổ sung search engine hay bộ lọc mới ngoài những trường đã nêu.
 - Dịch vụ PostgreSQL và các dependency hạ tầng cần cho luồng demo được cấu hình trong môi trường demo.
@@ -184,7 +184,7 @@ Là quản trị viên, tôi xem hàng đợi KYC, kiểm tra tài liệu và du
 - Thay đổi trải nghiệm guest/host, trừ sửa tương thích bắt buộc do bảo vệ contract quản trị.
 - Đồng bộ Meilisearch như một tính năng demo độc lập; chỉ giữ nếu cần thiết cho API search hiện hữu và đã hoạt động.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

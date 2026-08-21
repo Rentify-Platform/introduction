@@ -3,6 +3,7 @@ import { authService } from '../services/auth-service'
 import { useAuthStore } from '../store/use-auth-store'
 import { authQueryKeys } from './use-auth-queries'
 import { LoginInput } from '../schemas/auth-schema'
+import { AdminAccessDeniedError } from '../types'
 
 export function useAuthMutations() {
    const queryClient = useQueryClient()
@@ -12,6 +13,9 @@ export function useAuthMutations() {
       mutationFn: async (data: LoginInput) => {
          const response = await authService.login(data)
          if (response.success && response.data) {
+            if (response.data.user.role !== 'admin') {
+               throw new AdminAccessDeniedError()
+            }
             return response.data
          }
          throw new Error(response.message || 'Login failed')

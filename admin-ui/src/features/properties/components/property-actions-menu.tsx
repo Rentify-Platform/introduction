@@ -8,13 +8,7 @@ import {
    DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { PropertySummary } from '@/features/properties/types'
-import {
-   MoreHorizontal,
-   CheckCircle2,
-   PauseCircle,
-   Archive,
-   FileText
-} from 'lucide-react'
+import { MoreHorizontal, CheckCircle2, PauseCircle, Archive, FileText } from 'lucide-react'
 
 interface PropertyActionsMenuProps {
    property: PropertySummary
@@ -45,19 +39,15 @@ export function PropertyActionsMenu({
          </DropdownMenuTrigger>
 
          <DropdownMenuContent align="end" className="w-52">
-            {property.requiresLocalLicense && (
-               <>
-                  <DropdownMenuItem
-                     id={`view-license-${property.id}`}
-                     className="cursor-pointer gap-2 text-zinc-700 focus:bg-zinc-50"
-                     onClick={() => onViewLicense(property.id, property.title)}
-                  >
-                     <FileText className="h-3.5 w-3.5" />
-                     View License Doc
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-               </>
-            )}
+            <DropdownMenuItem
+               id={`view-license-${property.id}`}
+               className="cursor-pointer gap-2 text-zinc-700 focus:bg-zinc-50"
+               onClick={() => onViewLicense(property.id, property.title)}
+            >
+               <FileText className="h-3.5 w-3.5" />
+               View License Doc
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
 
             <p className="px-2 py-1 text-xs font-medium text-zinc-400">Status Override</p>
             <DropdownMenuSeparator />

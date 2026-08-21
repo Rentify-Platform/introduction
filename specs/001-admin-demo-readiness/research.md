@@ -18,6 +18,8 @@
 **Rationale**: Biến general balance API thành admin-only có thể phá contract hiện có. Admin-specific controller có thể reuse `GetBalanceUseCase` và fixed selector `platform/revenue/VND`.  
 **Alternatives rejected**: UI gửi arbitrary owner selector trên endpoint không bảo vệ; khóa toàn ledger module mà không audit consumer.
 
+**Post-rebase consumer evidence**: Repository search found `admin-ui/src/features/ledger/services/ledger-service.ts` as the only caller of `/ledger/accounts/balance`. The generic controller remains unchanged; Rentify Admin moves to the fixed admin-only endpoint.
+
 ## Decision 4: No mock dashboard data
 
 **Decision**: Dashboard chỉ hiển thị platform balance thật, total users, total properties, pending KYC count từ API thật và navigation shortcuts; loại recent bookings, hard-coded KPI và mọi KPI khác.

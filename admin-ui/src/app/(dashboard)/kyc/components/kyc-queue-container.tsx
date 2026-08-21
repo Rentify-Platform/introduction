@@ -12,23 +12,31 @@ export function KycQueueContainer() {
    const [selectedDoc, setSelectedDoc] = React.useState<KycDocument | null>(null)
    const [isRejectDialogOpen, setIsRejectDialogOpen] = React.useState(false)
 
-   const { pendingDocs, isLoading, error } = useKycQueries()
+   const { pendingDocs, isLoading, error, isUnauthorized, refetch } = useKycQueries()
    const { reviewKyc, isSubmittingReview } = useKycMutations(() => {
       setSelectedDoc(null)
       setIsRejectDialogOpen(false)
    })
 
-   const handleApprove = (docId: string) => {
-      reviewKyc({ documentId: docId, action: 'approve' })
+   const handleApprove = async (docId: string) => {
+      try {
+         await reviewKyc({ documentId: docId, action: 'approve' })
+      } catch {
+         // The mutation hook displays the backend error and refreshes stale data.
+      }
    }
 
-   const handleRejectSubmit = (data: { rejectionReason: string }) => {
+   const handleRejectSubmit = async (data: { rejectionReason: string }) => {
       if (!selectedDoc) return
-      reviewKyc({
-         documentId: selectedDoc.id,
-         action: 'reject',
-         rejectionReason: data.rejectionReason
-      })
+      try {
+         await reviewKyc({
+            documentId: selectedDoc.id,
+            action: 'reject',
+            rejectionReason: data.rejectionReason.trim()
+         })
+      } catch {
+         // The mutation hook displays the backend error and refreshes stale data.
+      }
    }
 
    return (
@@ -37,6 +45,8 @@ export function KycQueueContainer() {
             pendingDocs={pendingDocs}
             isLoading={isLoading}
             error={error}
+            isUnauthorized={isUnauthorized}
+            onRetry={() => void refetch()}
             onInspect={setSelectedDoc}
          />
 
@@ -44,7 +54,7 @@ export function KycQueueContainer() {
             <KycReviewDialog
                selectedDoc={selectedDoc}
                onClose={() => setSelectedDoc(null)}
-               onApprove={handleApprove}
+               onApprove={(docId) => void handleApprove(docId)}
                onRejectClick={() => setIsRejectDialogOpen(true)}
                isSubmittingReview={isSubmittingReview}
             />
@@ -54,7 +64,7 @@ export function KycQueueContainer() {
             <KycRejectionDialog
                isOpen={isRejectDialogOpen}
                onClose={() => setIsRejectDialogOpen(false)}
-               onSubmit={handleRejectSubmit}
+               onSubmit={(data) => void handleRejectSubmit(data)}
                isSubmittingReview={isSubmittingReview}
             />
          )}
