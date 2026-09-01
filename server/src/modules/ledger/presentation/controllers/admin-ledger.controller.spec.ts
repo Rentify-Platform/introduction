@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing'
 import { ROLES_KEY } from '../../../../shared/decorators/authorize.decorator'
 import { GlobalSecurityGuard } from '../../../../shared/guards/global-security.guard'
 import { TokenServicePort } from '../../../auth/application/ports/token-service.port'
+import { AccountRepository } from '../../../auth/domain/repositories/auth.repository'
 import { LedgerBalance } from '../../domain/entities/ledger-balance.entity'
 import { AdminLedgerController } from './admin-ledger.controller'
 
@@ -66,15 +67,28 @@ describe('Admin ledger authorization', () => {
    })
 
    async function buildGuard(role: 'admin' | 'guest' | 'host') {
-      const verifyToken = jest
-         .fn()
-         .mockResolvedValue({ sub: 'account-id', email: 'user@test.dev', role })
+      const verifyToken = jest.fn().mockResolvedValue({
+         sub: 'account-id',
+         email: 'user@test.dev',
+         role,
+         tokenVersion: 0
+      })
       const tokenService = { verifyToken }
       const module = await Test.createTestingModule({
          providers: [
             GlobalSecurityGuard,
             Reflector,
-            { provide: TokenServicePort, useValue: tokenService }
+            { provide: TokenServicePort, useValue: tokenService },
+            {
+               provide: AccountRepository,
+               useValue: {
+                  findById: jest.fn().mockResolvedValue({
+                     role,
+                     status: 'active',
+                     tokenVersion: 0
+                  })
+               }
+            }
          ]
       }).compile()
       return module.get(GlobalSecurityGuard)

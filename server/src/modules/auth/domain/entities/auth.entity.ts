@@ -16,7 +16,8 @@ export class Account {
       public readonly avatarUrl: string | null = null,
       public readonly bio: string | null = null,
       public readonly dateOfBirth: Date | null = null,
-      public readonly guestKycStatus: string = 'unverified'
+      public readonly guestKycStatus: string = 'unverified',
+      public readonly tokenVersion: number = 0
    ) {}
 
    static create(params: {

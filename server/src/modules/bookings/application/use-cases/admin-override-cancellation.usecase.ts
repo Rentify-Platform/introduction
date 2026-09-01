@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../../../../prisma/prisma.service'
-import { BusinessException } from '../../../../shared/exceptions/business.exception'
 
 export interface AdminOverrideCancellationCommand {
    bookingId: string
@@ -27,16 +26,12 @@ export class AdminOverrideCancellationUseCase {
       }
 
       if (booking.status !== 'cancelled_by_guest' && booking.status !== 'cancelled_by_host') {
-         throw new BadRequestException(
-            'Cannot override cancellation for a non-cancelled booking'
-         )
+         throw new BadRequestException('Cannot override cancellation for a non-cancelled booking')
       }
 
       const cancellation = booking.cancellations[0]
       if (!cancellation) {
-         throw new BadRequestException(
-            'Cancellation record missing for this booking'
-         )
+         throw new BadRequestException('Cancellation record missing for this booking')
       }
 
       // 2. Update cancellation record

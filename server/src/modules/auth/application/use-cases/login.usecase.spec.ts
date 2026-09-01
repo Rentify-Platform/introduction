@@ -57,6 +57,13 @@ describe('LoginUseCase', () => {
 
       expect(result.accessToken).toBe('jwt_token')
       expect(result.account.email).toBe('test@example.com')
+      const generatedPayload = tokenService.generateToken.mock.calls[0]?.[0]
+      expect(generatedPayload).toMatchObject({
+         sub: existingAccount.id,
+         email: existingAccount.email,
+         role: existingAccount.role,
+         tokenVersion: existingAccount.tokenVersion
+      })
    })
 
    it('should throw InvalidCredentialsException if password is invalid', async () => {

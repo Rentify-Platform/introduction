@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing'
 import { ROLES_KEY } from '../../../../shared/decorators/authorize.decorator'
 import { GlobalSecurityGuard } from '../../../../shared/guards/global-security.guard'
 import { TokenServicePort } from '../../application/ports/token-service.port'
+import { AccountRepository } from '../../domain/repositories/auth.repository'
 import { AdminAccountsController } from './admin-accounts.controller'
 
 const updateAccountStatusHandler = Object.getOwnPropertyDescriptor(
@@ -24,14 +25,27 @@ describe('Admin account status authorization', () => {
    })
 
    async function buildGuard(role: 'admin' | 'guest' | 'host') {
-      const verifyToken = jest
-         .fn()
-         .mockResolvedValue({ sub: 'account-id', email: 'user@test.dev', role })
+      const verifyToken = jest.fn().mockResolvedValue({
+         sub: 'account-id',
+         email: 'user@test.dev',
+         role,
+         tokenVersion: 0
+      })
       const module = await Test.createTestingModule({
          providers: [
             GlobalSecurityGuard,
             Reflector,
-            { provide: TokenServicePort, useValue: { verifyToken } }
+            { provide: TokenServicePort, useValue: { verifyToken } },
+            {
+               provide: AccountRepository,
+               useValue: {
+                  findById: jest.fn().mockResolvedValue({
+                     role,
+                     status: 'active',
+                     tokenVersion: 0
+                  })
+               }
+            }
          ]
       }).compile()
 

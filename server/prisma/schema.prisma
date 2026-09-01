@@ -14,6 +14,7 @@ model accounts {
   password_hash                                                 String?
   role                                                          account_role          @default(guest)
   status                                                        account_status        @default(active)
+  token_version                                                 Int                   @default(0)
   email_verified_at                                             DateTime?             @db.Timestamptz(6)
   phone_verified_at                                             DateTime?             @db.Timestamptz(6)
   last_login_at                                                 DateTime?             @db.Timestamptz(6)

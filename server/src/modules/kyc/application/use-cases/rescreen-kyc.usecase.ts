@@ -23,6 +23,8 @@ export class RescreenKycUseCase {
    ) {}
 
    async execute(command: RescreenKycCommand): Promise<RescreenKycResult> {
+      void command
+
       // 1. Fetch expiring checks
       const expiringChecks = await this.kycRepository.findExpiringBackgroundChecks()
       if (expiringChecks.length === 0) {

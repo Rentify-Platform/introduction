@@ -1,14 +1,8 @@
 import { Injectable } from '@nestjs/common'
-import {
-   kyc_check_result,
-   kyc_check_type,
-   kyc_doc_status,
-   kyc_doc_type,
-   kyc_status
-} from '@prisma/client'
+import { Prisma, kyc_doc_status } from '@prisma/client'
 import { PrismaService } from '../../../../prisma/prisma.service'
-import { KycCheck, KycCheckResult, KycCheckType } from '../../domain/entities/kyc-check.entity'
-import { KycDocStatus, KycDocType, KycDocument } from '../../domain/entities/kyc-document.entity'
+import { KycCheck } from '../../domain/entities/kyc-check.entity'
+import { KycDocument } from '../../domain/entities/kyc-document.entity'
 import { KycRepository } from '../../domain/repositories/kyc.repository'
 
 @Injectable()
@@ -46,7 +40,9 @@ export class KycPrismaRepository implements KycRepository {
          update: {
             doc_type: document.docType,
             country_code: document.countryCode,
-            document_number_enc: document.documentNumberEnc as any,
+            document_number_enc: document.documentNumberEnc
+               ? Uint8Array.from(document.documentNumberEnc)
+               : null,
             file_url_front: document.fileUrlFront,
             file_url_back: document.fileUrlBack,
             issue_date: document.issueDate,
@@ -61,7 +57,9 @@ export class KycPrismaRepository implements KycRepository {
             account_id: document.accountId,
             doc_type: document.docType,
             country_code: document.countryCode,
-            document_number_enc: document.documentNumberEnc as any,
+            document_number_enc: document.documentNumberEnc
+               ? Uint8Array.from(document.documentNumberEnc)
+               : null,
             file_url_front: document.fileUrlFront,
             file_url_back: document.fileUrlBack,
             issue_date: document.issueDate,
@@ -83,7 +81,10 @@ export class KycPrismaRepository implements KycRepository {
          update: {
             result: check.result,
             score: check.score,
-            raw_response: check.rawResponse,
+            raw_response:
+               check.rawResponse === null
+                  ? Prisma.DbNull
+                  : (check.rawResponse as Prisma.InputJsonValue),
             expires_at: check.expiresAt
          },
          create: {
@@ -95,7 +96,10 @@ export class KycPrismaRepository implements KycRepository {
             provider_reference_id: check.providerReferenceId,
             result: check.result,
             score: check.score,
-            raw_response: check.rawResponse,
+            raw_response:
+               check.rawResponse === null
+                  ? Prisma.DbNull
+                  : (check.rawResponse as Prisma.InputJsonValue),
             expires_at: check.expiresAt,
             created_at: check.createdAt
          }

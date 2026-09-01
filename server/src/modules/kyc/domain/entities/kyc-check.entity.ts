@@ -9,6 +9,8 @@ export type KycCheckType =
    | 'tax_info'
    | 'bank_account_match'
 export type KycCheckResult = 'pass' | 'fail' | 'review_required'
+export type KycJsonValue = string | number | boolean | KycJsonObject | KycJsonValue[] | null
+export type KycJsonObject = { [key: string]: KycJsonValue | undefined }
 
 export class KycCheck {
    constructor(
@@ -20,7 +22,7 @@ export class KycCheck {
       public readonly providerReferenceId: string | null,
       public readonly result: KycCheckResult,
       public readonly score: number | null,
-      public readonly rawResponse: any,
+      public readonly rawResponse: KycJsonValue,
       public readonly expiresAt: Date | null,
       public readonly createdAt: Date
    ) {}
@@ -33,7 +35,7 @@ export class KycCheck {
       providerReferenceId?: string | null
       result: KycCheckResult
       score?: number | null
-      rawResponse?: any
+      rawResponse?: KycJsonValue
       expiresAt?: Date | null
    }): KycCheck {
       return new KycCheck(
