@@ -104,6 +104,7 @@ export default function MyTripsPage() {
             return 'Completed'
          case 'cancelled_by_guest':
          case 'cancelled_by_host':
+         case 'cancelled_by_admin':
             return 'Cancelled'
          case 'expired':
             return 'Expired'

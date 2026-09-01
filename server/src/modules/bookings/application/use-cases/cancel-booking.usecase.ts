@@ -13,7 +13,7 @@ import {
    PostTransactionCommand,
    PostTransactionEntryCommand
 } from '../../../ledger/application/use-cases/post-transaction.usecase'
-import { booking_status, cancelled_by_role } from '@prisma/client'
+
 import { BookedDatesCachePort } from '../ports/booked-dates-cache.port'
 
 export class CancelBookingCommand {
@@ -60,7 +60,7 @@ export class CancelBookingUseCase {
 
       if (command.role === 'admin') {
          determinedRole = 'admin'
-         newStatus = 'cancelled_by_host' // or map to default admin cancel status
+         newStatus = 'cancelled_by_admin'
       } else if (booking.guestId === command.userId) {
          determinedRole = 'guest'
          newStatus = 'cancelled_by_guest'

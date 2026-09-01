@@ -25,7 +25,11 @@ export class AdminOverrideCancellationUseCase {
          throw new NotFoundException(`Booking ${command.bookingId} not found`)
       }
 
-      if (booking.status !== 'cancelled_by_guest' && booking.status !== 'cancelled_by_host') {
+      if (
+         booking.status !== 'cancelled_by_guest' &&
+         booking.status !== 'cancelled_by_host' &&
+         booking.status !== 'cancelled_by_admin'
+      ) {
          throw new BadRequestException('Cannot override cancellation for a non-cancelled booking')
       }
 

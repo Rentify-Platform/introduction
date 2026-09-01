@@ -106,6 +106,8 @@ export default function HostReservationsPage() {
             return 'Cancelled by Guest'
          case 'cancelled_by_host':
             return 'Declined/Cancelled by Host'
+         case 'cancelled_by_admin':
+            return 'Cancelled by Admin'
          case 'expired':
             return 'Expired'
          default:

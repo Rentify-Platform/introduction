@@ -7,7 +7,7 @@ import {
    FindAllBookingsFilter,
    PaginatedAdminBookings
 } from '../../domain/repositories/bookings.repository'
-import { booking_status, payment_status, Prisma } from '@prisma/client'
+import { booking_status, Prisma } from '@prisma/client'
 
 @Injectable()
 export class BookingsPrismaRepository implements BookingsRepository {
@@ -108,6 +108,7 @@ export class BookingsPrismaRepository implements BookingsRepository {
                notIn: [
                   booking_status.cancelled_by_guest,
                   booking_status.cancelled_by_host,
+                  booking_status.cancelled_by_admin,
                   booking_status.expired
                ]
             },
@@ -152,6 +153,7 @@ export class BookingsPrismaRepository implements BookingsRepository {
          where: { id: payment.id },
          update: {
             status: payment.status,
+            ledger_transaction_id: payment.ledgerTransactionId,
             failure_reason: payment.failureReason,
             updated_at: payment.updatedAt
          },
@@ -197,6 +199,7 @@ export class BookingsPrismaRepository implements BookingsRepository {
                notIn: [
                   booking_status.cancelled_by_guest,
                   booking_status.cancelled_by_host,
+                  booking_status.cancelled_by_admin,
                   booking_status.expired
                ]
             }

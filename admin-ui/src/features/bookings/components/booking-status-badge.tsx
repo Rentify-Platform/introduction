@@ -25,6 +25,10 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; className: string }>
       label: 'Cancelled by Host',
       className: 'bg-red-50 text-red-700 border border-red-200'
    },
+   cancelled_by_admin: {
+      label: 'Cancelled by Admin',
+      className: 'bg-violet-50 text-violet-700 border border-violet-200'
+   },
    completed: {
       label: 'Completed',
       className: 'bg-zinc-100 text-zinc-700 border border-zinc-200'
@@ -49,7 +53,7 @@ export function BookingStatusBadge({ status, className }: BookingStatusBadgeProp
    return (
       <span
          className={cn(
-            'inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold',
+            'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap',
             config.className,
             className
          )}

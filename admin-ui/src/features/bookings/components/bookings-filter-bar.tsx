@@ -63,6 +63,7 @@ export function BookingsFilterBar({ filter, onChange }: BookingsFilterBarProps) 
                   <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="cancelled_by_guest">Cancelled by Guest</SelectItem>
                   <SelectItem value="cancelled_by_host">Cancelled by Host</SelectItem>
+                  <SelectItem value="cancelled_by_admin">Cancelled by Admin</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="expired">Expired</SelectItem>
                </SelectContent>

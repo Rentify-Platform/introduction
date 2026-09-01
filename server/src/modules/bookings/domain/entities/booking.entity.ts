@@ -6,6 +6,7 @@ export type BookingStatus =
    | 'confirmed'
    | 'cancelled_by_guest'
    | 'cancelled_by_host'
+   | 'cancelled_by_admin'
    | 'completed'
    | 'expired'
 
