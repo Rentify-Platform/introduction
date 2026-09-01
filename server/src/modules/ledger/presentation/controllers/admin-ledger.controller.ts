@@ -1,5 +1,9 @@
-import { Controller, Get, Patch, Body, Query } from '@nestjs/common'
+import { Controller, Get, Patch, Body, Query, UseGuards } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
+import {
+   GetBalanceCommand,
+   GetBalanceUseCase
+} from '../../application/use-cases/get-balance.usecase'
 import {
    ListAllTransactionsUseCase,
    ListAllTransactionsCommand
@@ -16,20 +20,38 @@ import {
 } from '../../application/use-cases/update-platform-config.usecase'
 import { UpdatePlatformConfigRequest } from '../requests/update-platform-config.request'
 import { AdminLedgerMapper } from '../mappers/admin-ledger.mapper'
+import { LedgerMapper } from '../mappers/ledger.mapper'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { Authorize } from '../../../../shared/decorators/authorize.decorator'
+import { JwtAuthGuard } from '../../../auth/infrastructure/jwt-auth.guard'
 
 @ApiTags('Admin - Ledger')
 @ApiBearerAuth('bearer')
 @Controller('admin/ledger')
 export class AdminLedgerController {
    constructor(
+      private readonly getBalanceUseCase: GetBalanceUseCase,
       private readonly listAllTransactionsUseCase: ListAllTransactionsUseCase,
       private readonly listAllBalancesUseCase: ListAllBalancesUseCase,
       private readonly listAllPayoutsUseCase: ListAllPayoutsUseCase,
       private readonly getPlatformConfigUseCase: GetPlatformConfigUseCase,
       private readonly updatePlatformConfigUseCase: UpdatePlatformConfigUseCase
    ) {}
+
+   @Get('platform-balance')
+   @UseGuards(JwtAuthGuard)
+   @Authorize('admin')
+   @ApiOperation({ summary: 'Get the Rentify platform revenue balance in VND' })
+   async getPlatformBalance() {
+      const balance = await this.getBalanceUseCase.execute(
+         new GetBalanceCommand(null, 'platform', null, 'revenue', 'VND')
+      )
+
+      return ApiResponse.success(
+         { ...LedgerMapper.toBalanceResponse(balance), currency: 'VND' },
+         'Platform balance retrieved successfully'
+      )
+   }
 
    @Get('transactions')
    @Authorize('admin')

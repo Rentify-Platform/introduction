@@ -15,6 +15,10 @@ import {
    PauseArchiveListingUseCase,
    PauseArchiveListingCommand
 } from './pause-archive-listing.usecase'
+import {
+   UpdatePropertyStatusAdminCommand,
+   UpdatePropertyStatusAdminUseCase
+} from './update-property-status-admin.usecase'
 import { ListingsRepository } from '../../domain/repositories/listings.repository'
 import { Property } from '../../domain/entities/property.entity'
 import { PropertyLicense } from '../../domain/entities/property-license.entity'
@@ -436,5 +440,133 @@ describe('Listings Use Cases', () => {
          expect(result.status).toBe('paused')
          expect(listingsRepository.save).toHaveBeenCalled()
       })
+   })
+
+   describe('UpdatePropertyStatusAdminUseCase', () => {
+      const findPropertyById = jest.fn()
+      const checkHostKycVerified = jest.fn()
+      const findVerifiedLicense = jest.fn()
+      const updatePropertyStatus = jest.fn()
+
+      beforeEach(() => {
+         findPropertyById.mockReset()
+         checkHostKycVerified.mockReset()
+         findVerifiedLicense.mockReset()
+         updatePropertyStatus.mockReset()
+         listingsRepository.findById = findPropertyById
+         listingsRepository.checkHostKycVerified = checkHostKycVerified
+         listingsRepository.findVerifiedLicenseByPropertyId = findVerifiedLicense
+         listingsRepository.updatePropertyStatus = updatePropertyStatus
+      })
+
+      const property = (requiresLocalLicense: boolean) =>
+         new Property(
+            'property-123',
+            'host-123',
+            1,
+            'entire_place',
+            'paused',
+            'Admin managed property',
+            null,
+            '123 Main Street',
+            null,
+            'Hanoi',
+            null,
+            'VN',
+            null,
+            21.0285,
+            105.8542,
+            2,
+            1,
+            1,
+            1,
+            500000n,
+            0n,
+            'VND',
+            1,
+            365,
+            '15:00',
+            '11:00',
+            false,
+            'moderate',
+            requiresLocalLicense,
+            new Date('2026-08-20T00:00:00.000Z'),
+            new Date('2026-08-20T00:00:00.000Z'),
+            null,
+            null
+         )
+
+      const verifiedLicense = new PropertyLicense(
+         'license-123',
+         'property-123',
+         'VN-123',
+         'Hanoi Authority',
+         'https://example.com/license.pdf',
+         null,
+         'verified',
+         new Date('2026-08-20T00:00:00.000Z'),
+         new Date('2026-08-19T00:00:00.000Z')
+      )
+
+      it.each([true, false])(
+         'activates when both prerequisites pass (requiresLocalLicense=%s)',
+         async (requiresLocalLicense) => {
+            const existing = property(requiresLocalLicense)
+            findPropertyById.mockResolvedValue(existing)
+            checkHostKycVerified.mockResolvedValue(true)
+            findVerifiedLicense.mockResolvedValue(verifiedLicense)
+            updatePropertyStatus.mockResolvedValue(existing)
+            const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+
+            await useCase.execute(new UpdatePropertyStatusAdminCommand(existing.id, 'active'))
+
+            expect(updatePropertyStatus).toHaveBeenCalledWith(existing.id, 'active')
+         }
+      )
+
+      it('rejects activation when host KYC is not verified', async () => {
+         const existing = property(true)
+         findPropertyById.mockResolvedValue(existing)
+         checkHostKycVerified.mockResolvedValue(false)
+         const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+
+         await expect(
+            useCase.execute(new UpdatePropertyStatusAdminCommand(existing.id, 'active'))
+         ).rejects.toBeInstanceOf(HostNotVerifiedException)
+         expect(findVerifiedLicense).not.toHaveBeenCalled()
+         expect(updatePropertyStatus).not.toHaveBeenCalled()
+      })
+
+      it.each([true, false])(
+         'rejects activation without a verified license (requiresLocalLicense=%s)',
+         async (requiresLocalLicense) => {
+            const existing = property(requiresLocalLicense)
+            findPropertyById.mockResolvedValue(existing)
+            checkHostKycVerified.mockResolvedValue(true)
+            findVerifiedLicense.mockResolvedValue(null)
+            const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+
+            await expect(
+               useCase.execute(new UpdatePropertyStatusAdminCommand(existing.id, 'active'))
+            ).rejects.toBeInstanceOf(PropertyLicenseRequiredException)
+            expect(updatePropertyStatus).not.toHaveBeenCalled()
+         }
+      )
+
+      it.each(['paused', 'archived'] as const)(
+         'preserves the existing %s status behavior without activation checks',
+         async (status) => {
+            const existing = property(false)
+            findPropertyById.mockResolvedValue(existing)
+            updatePropertyStatus.mockResolvedValue(existing)
+            const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+
+            await useCase.execute(new UpdatePropertyStatusAdminCommand(existing.id, status))
+
+            expect(checkHostKycVerified).not.toHaveBeenCalled()
+            expect(findVerifiedLicense).not.toHaveBeenCalled()
+            expect(updatePropertyStatus).toHaveBeenCalledWith(existing.id, status)
+         }
+      )
    })
 })

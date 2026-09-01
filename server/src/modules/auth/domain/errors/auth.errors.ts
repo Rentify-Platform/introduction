@@ -28,3 +28,13 @@ export class AccountNotFoundException extends BusinessException {
       super('ACCOUNT_NOT_FOUND', `Account with ID '${id}' not found`, HttpStatus.NOT_FOUND)
    }
 }
+
+export class AdminAccountStatusProtectedException extends BusinessException {
+   constructor() {
+      super(
+         'ADMIN_ACCOUNT_STATUS_PROTECTED',
+         'The status of an admin account cannot be changed',
+         HttpStatus.FORBIDDEN
+      )
+   }
+}

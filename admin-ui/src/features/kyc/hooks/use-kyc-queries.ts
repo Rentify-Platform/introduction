@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { kycService } from '../services/kyc-service'
+import { getApiErrorStatus } from '@/lib/api/api-client'
 
 export const kycQueryKeys = {
    all: ['kyc'] as const,
@@ -15,6 +16,8 @@ export function useKycQueries() {
    return {
       pendingDocs: pendingDocsQuery.data || [],
       isLoading: pendingDocsQuery.isLoading,
-      error: pendingDocsQuery.error
+      error: pendingDocsQuery.error,
+      isUnauthorized: getApiErrorStatus(pendingDocsQuery.error) === 403,
+      refetch: pendingDocsQuery.refetch
    }
 }

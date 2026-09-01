@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common'
 import { KycDocStatus, KycDocument } from '../../domain/entities/kyc-document.entity'
 import {
    InvalidKycReviewActionException,
+   KycDocumentAlreadyReviewedException,
+   KycRejectionReasonRequiredException,
    KycDocumentNotFoundException
 } from '../../domain/errors/kyc.errors'
 import { KycRepository } from '../../domain/repositories/kyc.repository'
@@ -38,7 +40,17 @@ export class ReviewKycUseCase {
          throw new InvalidKycReviewActionException(command.action)
       }
 
-      // 3. Update status
+      // 3. Only pending documents can be reviewed
+      if (document.status !== 'pending') {
+         throw new KycDocumentAlreadyReviewedException()
+      }
+
+      const rejectionReason = command.rejectionReason?.trim() || null
+      if (command.action === 'reject' && !rejectionReason) {
+         throw new KycRejectionReasonRequiredException()
+      }
+
+      // 4. Update status
       const finalDocStatus: KycDocStatus = command.action === 'approve' ? 'verified' : 'rejected'
       const profileKycStatus = command.action === 'approve' ? 'verified' : 'rejected'
 
@@ -53,15 +65,13 @@ export class ReviewKycUseCase {
          document.issueDate,
          document.expiryDate,
          finalDocStatus,
-         command.action === 'reject'
-            ? command.rejectionReason || 'Manually rejected by admin'
-            : null,
+         command.action === 'reject' ? rejectionReason : null,
          command.adminId,
          new Date(),
          document.createdAt
       )
 
-      // 4. Persist
+      // 5. Persist
       await this.kycRepository.saveDocument(updatedDoc)
       await this.kycRepository.updateProfileKycStatus(document.accountId, profileKycStatus)
 

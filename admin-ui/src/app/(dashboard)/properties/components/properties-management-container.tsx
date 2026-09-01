@@ -1,14 +1,13 @@
 'use client'
 
 import * as React from 'react'
-import { RefreshCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { usePropertiesQueries } from '@/features/properties/hooks/use-properties-queries'
 import { usePropertiesMutations } from '@/features/properties/hooks/use-properties-mutations'
 import { PropertiesFilterBar } from '@/features/properties/components/properties-filter-bar'
 import { PropertiesTable } from '@/features/properties/components/properties-table'
 import { PropertyLicenseDrawer } from '@/features/properties/components/property-license-drawer'
-import { PropertiesFilter } from '@/features/properties/types'
+import { PropertyStatusConfirmationDialog } from '@/features/properties/components/property-status-confirmation-dialog'
+import { PropertiesFilter, PropertyStatus, PropertySummary } from '@/features/properties/types'
 
 export function PropertiesManagementContainer() {
    const [filter, setFilter] = React.useState<PropertiesFilter>({ page: 1, limit: 20 })
@@ -16,30 +15,31 @@ export function PropertiesManagementContainer() {
       propertyId: string
       title: string
    } | null>(null)
+   const [pendingChange, setPendingChange] = React.useState<{
+      property: PropertySummary
+      status: Extract<PropertyStatus, 'active' | 'paused' | 'archived'>
+   } | null>(null)
 
-   const { properties, total, page, limit, isLoading, isFetching, error } =
+   const { properties, total, page, limit, isLoading, isFetching, error, isUnauthorized, refetch } =
       usePropertiesQueries(filter)
-   const { updateStatus, isUpdatingStatus, syncMeilisearch, isSyncing } = usePropertiesMutations()
+   const { updateStatus, isUpdatingStatus } = usePropertiesMutations()
+
+   const confirmStatusChange = async () => {
+      if (!pendingChange) return
+      try {
+         await updateStatus({
+            propertyId: pendingChange.property.id,
+            status: pendingChange.status
+         })
+         setPendingChange(null)
+      } catch {
+         // The mutation hook displays the backend error and refreshes stale data.
+      }
+   }
 
    return (
       <div className="space-y-4">
-         {/* Toolbar */}
-         <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-               <PropertiesFilterBar filter={filter} onChange={setFilter} />
-            </div>
-            <Button
-               id="sync-meilisearch-btn"
-               variant="outline"
-               size="sm"
-               disabled={isSyncing}
-               onClick={() => syncMeilisearch()}
-               className="shrink-0 gap-1.5 border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-            >
-               <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-               {isSyncing ? 'Syncing…' : 'Sync Search'}
-            </Button>
-         </div>
+         <PropertiesFilterBar filter={filter} onChange={setFilter} />
 
          {/* Table */}
          <PropertiesTable
@@ -49,8 +49,10 @@ export function PropertiesManagementContainer() {
             isLoading={isLoading}
             isFetching={isFetching}
             error={error}
+            isUnauthorized={isUnauthorized}
+            onRetry={() => void refetch()}
             onFilterChange={setFilter}
-            onUpdateStatus={(propertyId, status) => updateStatus({ propertyId, status })}
+            onRequestStatusChange={(property, status) => setPendingChange({ property, status })}
             onViewLicense={(propertyId, title) => setLicenseDrawer({ propertyId, title })}
             isUpdatingStatus={isUpdatingStatus}
          />
@@ -63,6 +65,14 @@ export function PropertiesManagementContainer() {
                onClose={() => setLicenseDrawer(null)}
             />
          )}
+
+         <PropertyStatusConfirmationDialog
+            property={pendingChange?.property ?? null}
+            targetStatus={pendingChange?.status ?? null}
+            isSubmitting={isUpdatingStatus}
+            onCancel={() => setPendingChange(null)}
+            onConfirm={() => void confirmStatusChange()}
+         />
       </div>
    )
 }

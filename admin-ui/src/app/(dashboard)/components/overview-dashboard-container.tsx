@@ -21,20 +21,25 @@ import {
    TableHeader,
    TableRow
 } from '@/components/ui/table'
-import { useDashboardOverviewQuery, useRecentBookingsQuery } from '@/features/dashboard/hooks/use-dashboard-queries'
+import {
+   useDashboardOverviewQuery,
+   useRecentBookingsQuery
+} from '@/features/dashboard/hooks/use-dashboard-queries'
 import { usePropertiesMutations } from '@/features/properties/hooks/use-properties-mutations'
 import { formatVND } from '@/lib/utils'
 
 export function OverviewDashboardContainer() {
    // Custom query and mutation hooks
    const { data: overviewData, isLoading: isLoadingOverview } = useDashboardOverviewQuery()
-   const { data: recentBookings, isLoading: isLoadingBookings } = useRecentBookingsQuery()
+   const { data: recentBookings } = useRecentBookingsQuery()
    const { syncMeilisearch, isSyncing } = usePropertiesMutations()
 
    const kpis = [
       {
          title: 'Platform Revenue',
-         value: isLoadingOverview ? 'Loading...' : formatVND(Number(overviewData?.platformRevenueCents || 0)),
+         value: isLoadingOverview
+            ? 'Loading...'
+            : formatVND(Number(overviewData?.platformRevenueCents || 0)),
          description: 'Cumulative transaction service fees',
          icon: DollarSign,
          color: 'text-emerald-600'

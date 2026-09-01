@@ -4,6 +4,8 @@ import * as React from 'react'
 import { FileText, ExternalLink, Loader2, ShieldCheck, ShieldX, Clock } from 'lucide-react'
 import { usePropertyLicenseQuery } from '@/features/properties/hooks/use-properties-queries'
 import { PropertyLicense } from '@/features/properties/types'
+import { Button } from '@/components/ui/button'
+import { getApiErrorStatus } from '@/lib/api/api-client'
 
 interface PropertyLicenseDrawerProps {
    propertyId: string | null
@@ -42,12 +44,21 @@ export function PropertyLicenseDrawer({
    propertyTitle,
    onClose
 }: PropertyLicenseDrawerProps) {
-   const { data: license, isLoading } = usePropertyLicenseQuery(propertyId)
+   const { data: license, isLoading, error, refetch } = usePropertyLicenseQuery(propertyId)
 
    if (!propertyId) return null
 
    const statusConfig = license ? LICENSE_STATUS_CONFIG[license.status] : null
    const StatusIcon = statusConfig?.icon ?? FileText
+   const isUnauthorized = getApiErrorStatus(error) === 403
+   const hasValidFileUrl = (() => {
+      if (!license?.fileUrl) return false
+      try {
+         return ['http:', 'https:'].includes(new URL(license.fileUrl).protocol)
+      } catch {
+         return false
+      }
+   })()
 
    return (
       <div
@@ -86,6 +97,23 @@ export function PropertyLicenseDrawer({
                      <Loader2 className="mb-3 h-8 w-8 animate-spin text-pink-400" />
                      <p className="text-sm">Loading license…</p>
                   </div>
+               ) : error ? (
+                  <div className="py-16 text-center">
+                     <ShieldX className="mx-auto mb-3 h-10 w-10 text-rose-300" />
+                     <p className="text-sm font-medium text-rose-600">
+                        {isUnauthorized
+                           ? 'Administrator access required'
+                           : 'Unable to load license'}
+                     </p>
+                     <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4"
+                        onClick={() => void refetch()}
+                     >
+                        Try Again
+                     </Button>
+                  </div>
                ) : !license ? (
                   <div className="py-16 text-center">
                      <FileText className="mx-auto mb-3 h-10 w-10 text-zinc-300" />
@@ -108,7 +136,7 @@ export function PropertyLicenseDrawer({
                      <dl className="space-y-4">
                         {license.licenseNumber && (
                            <div>
-                              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                              <dt className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
                                  License Number
                               </dt>
                               <dd className="mt-1 font-mono text-sm text-zinc-800">
@@ -119,16 +147,18 @@ export function PropertyLicenseDrawer({
 
                         {license.issuingAuthority && (
                            <div>
-                              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                              <dt className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
                                  Issuing Authority
                               </dt>
-                              <dd className="mt-1 text-sm text-zinc-800">{license.issuingAuthority}</dd>
+                              <dd className="mt-1 text-sm text-zinc-800">
+                                 {license.issuingAuthority}
+                              </dd>
                            </div>
                         )}
 
                         {license.expiryDate && (
                            <div>
-                              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                              <dt className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
                                  Expiry Date
                               </dt>
                               <dd className="mt-1 text-sm text-zinc-800">
@@ -143,7 +173,7 @@ export function PropertyLicenseDrawer({
 
                         {license.verifiedAt && (
                            <div>
-                              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                              <dt className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
                                  Verified At
                               </dt>
                               <dd className="mt-1 text-sm text-zinc-800">
@@ -157,7 +187,7 @@ export function PropertyLicenseDrawer({
                         )}
 
                         <div>
-                           <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                           <dt className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
                               Submitted
                            </dt>
                            <dd className="mt-1 text-sm text-zinc-800">
@@ -171,9 +201,9 @@ export function PropertyLicenseDrawer({
                      </dl>
 
                      {/* File link */}
-                     {license.fileUrl && (
+                     {hasValidFileUrl ? (
                         <a
-                           href={license.fileUrl}
+                           href={license.fileUrl!}
                            target="_blank"
                            rel="noopener noreferrer"
                            id="view-license-file"
@@ -182,6 +212,10 @@ export function PropertyLicenseDrawer({
                            <ExternalLink className="h-4 w-4" />
                            View License Document
                         </a>
+                     ) : (
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-500">
+                           License document URL is missing or invalid.
+                        </div>
                      )}
                   </div>
                )}

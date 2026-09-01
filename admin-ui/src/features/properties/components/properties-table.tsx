@@ -24,8 +24,13 @@ interface PropertiesTableProps {
    isLoading: boolean
    isFetching: boolean
    error: unknown
+   isUnauthorized: boolean
+   onRetry: () => void
    onFilterChange: (filter: PropertiesFilter) => void
-   onUpdateStatus: (propertyId: string, status: 'active' | 'paused' | 'archived') => void
+   onRequestStatusChange: (
+      property: PropertySummary,
+      status: 'active' | 'paused' | 'archived'
+   ) => void
    onViewLicense: (propertyId: string, title: string) => void
    isUpdatingStatus: boolean
 }
@@ -44,8 +49,10 @@ export function PropertiesTable({
    isLoading,
    isFetching,
    error,
+   isUnauthorized,
+   onRetry,
    onFilterChange,
-   onUpdateStatus,
+   onRequestStatusChange,
    onViewLicense,
    isUpdatingStatus
 }: PropertiesTableProps) {
@@ -59,12 +66,12 @@ export function PropertiesTable({
             <div>
                <CardTitle className="text-lg text-zinc-900">Platform Properties</CardTitle>
                <CardDescription className="text-zinc-500">
-                  {total > 0 ? `${total} properties found` : 'No properties match the current filters'}
+                  {total > 0
+                     ? `${total} properties found`
+                     : 'No properties match the current filters'}
                </CardDescription>
             </div>
-            {isFetching && !isLoading && (
-               <Loader2 className="h-4 w-4 animate-spin text-pink-400" />
-            )}
+            {isFetching && !isLoading && <Loader2 className="h-4 w-4 animate-spin text-pink-400" />}
          </CardHeader>
 
          <CardContent className="p-0">
@@ -73,13 +80,28 @@ export function PropertiesTable({
                   <Loader2 className="mb-3 h-8 w-8 animate-spin text-pink-400" />
                   <p className="text-sm">Loading properties…</p>
                </div>
-            ) : error || properties.length === 0 ? (
+            ) : error ? (
+               <div className="py-16 text-center">
+                  <Building2 className="mx-auto mb-3 h-10 w-10 text-rose-300" />
+                  <p className="text-sm font-medium text-rose-600">
+                     {isUnauthorized
+                        ? 'Administrator access required'
+                        : 'Unable to load properties'}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                     {isUnauthorized
+                        ? 'Your account cannot access property management.'
+                        : 'Check the connection and try again.'}
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
+                     Try Again
+                  </Button>
+               </div>
+            ) : properties.length === 0 ? (
                <div className="py-16 text-center">
                   <Building2 className="mx-auto mb-3 h-10 w-10 text-zinc-300" />
                   <p className="text-sm font-medium text-zinc-500">No properties found</p>
-                  <p className="mt-1 text-xs text-zinc-400">
-                     {error ? 'Failed to load data.' : 'Try adjusting your filters.'}
-                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">Try adjusting your filters.</p>
                </div>
             ) : (
                <>
@@ -103,6 +125,7 @@ export function PropertiesTable({
                            >
                               <TableCell>
                                  <div className="flex items-center gap-3">
+                                    {/* eslint-disable-next-line @next/next/no-img-element -- Thumbnail hosts are API-provided and not statically enumerable. */}
                                     <img
                                        src={property.thumbnailUrl}
                                        alt={property.title}
@@ -135,7 +158,9 @@ export function PropertiesTable({
                               <TableCell>
                                  <span className="font-mono text-sm text-zinc-800">
                                     {Number(property.basePriceCents).toLocaleString()}{' '}
-                                    <span className="text-xs text-zinc-400">{property.currency}</span>
+                                    <span className="text-xs text-zinc-400">
+                                       {property.currency}
+                                    </span>
                                  </span>
                               </TableCell>
                               <TableCell>
@@ -149,7 +174,9 @@ export function PropertiesTable({
                               <TableCell>
                                  <PropertyActionsMenu
                                     property={property}
-                                    onUpdateStatus={onUpdateStatus}
+                                    onUpdateStatus={(_propertyId, status) =>
+                                       onRequestStatusChange(property, status)
+                                    }
                                     onViewLicense={onViewLicense}
                                     isLoading={isUpdatingStatus}
                                  />

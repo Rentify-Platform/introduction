@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common'
 import { ListingsRepository } from '../../domain/repositories/listings.repository'
 import { Property } from '../../domain/entities/property.entity'
-import { PropertyNotFoundException } from '../../domain/errors/listings.errors'
+import {
+   HostNotVerifiedException,
+   PropertyLicenseRequiredException,
+   PropertyNotFoundException
+} from '../../domain/errors/listings.errors'
 
 export class UpdatePropertyStatusAdminCommand {
    constructor(
@@ -21,7 +25,22 @@ export class UpdatePropertyStatusAdminUseCase {
          throw new PropertyNotFoundException()
       }
 
-      // 2. Apply the status override (admin bypasses normal state machine)
+      // 2. Activation preserves the platform's KYC and license invariants
+      if (command.status === 'active') {
+         const hostKycVerified = await this.listingsRepository.checkHostKycVerified(property.hostId)
+         if (!hostKycVerified) {
+            throw new HostNotVerifiedException()
+         }
+
+         const verifiedLicense = await this.listingsRepository.findVerifiedLicenseByPropertyId(
+            property.id
+         )
+         if (!verifiedLicense) {
+            throw new PropertyLicenseRequiredException()
+         }
+      }
+
+      // 3. Apply the requested admin status change
       return this.listingsRepository.updatePropertyStatus(command.propertyId, command.status)
    }
 }

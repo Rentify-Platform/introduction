@@ -4,10 +4,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { AccountStatus } from '@/features/users/types'
 
-const STATUS_CONFIG: Record<
-   AccountStatus,
-   { label: string; className: string }
-> = {
+const STATUS_CONFIG: Record<AccountStatus, { label: string; className: string }> = {
    active: {
       label: 'Active',
       className: 'bg-emerald-50 text-emerald-700 border border-emerald-200'

@@ -18,10 +18,7 @@ export const propertiesService = {
       return response.data?.data ?? null
    },
 
-   async updateStatus(
-      propertyId: string,
-      status: 'active' | 'paused' | 'archived'
-   ) {
+   async updateStatus(propertyId: string, status: 'active' | 'paused' | 'archived') {
       const response = await apiClient.patch(`/admin/properties/${propertyId}/status`, { status })
       return response.data?.data
    },

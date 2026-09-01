@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { propertiesService } from '../services/properties-service'
 import { PropertiesFilter } from '../types'
+import { getApiErrorStatus } from '@/lib/api/api-client'
 
 export const propertiesQueryKeys = {
    all: ['properties'] as const,
@@ -22,7 +23,9 @@ export function usePropertiesQueries(filter: PropertiesFilter) {
       limit: listQuery.data?.limit ?? 20,
       isLoading: listQuery.isLoading,
       isFetching: listQuery.isFetching,
-      error: listQuery.error
+      error: listQuery.error,
+      isUnauthorized: getApiErrorStatus(listQuery.error) === 403,
+      refetch: listQuery.refetch
    }
 }
 

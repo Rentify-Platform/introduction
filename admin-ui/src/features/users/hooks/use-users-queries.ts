@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { usersService } from '../services/users-service'
 import { UsersFilter } from '../types'
+import { getApiErrorStatus } from '@/lib/api/api-client'
 
 export const usersQueryKeys = {
    all: ['users'] as const,
@@ -21,6 +22,8 @@ export function useUsersQueries(filter: UsersFilter) {
       limit: listQuery.data?.limit ?? 20,
       isLoading: listQuery.isLoading,
       isFetching: listQuery.isFetching,
-      error: listQuery.error
+      error: listQuery.error,
+      isUnauthorized: getApiErrorStatus(listQuery.error) === 403,
+      refetch: listQuery.refetch
    }
 }
