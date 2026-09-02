@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 import { Authorize } from '../../../../shared/decorators/authorize.decorator'
-import { Public } from '../../../../shared/decorators/public.decorator'
 import { MeilisearchService } from '../../../../shared/meilisearch/meilisearch.service'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { JwtAuthGuard } from '../../../auth/infrastructure/jwt-auth.guard'
@@ -34,7 +33,7 @@ import {
    UpdateListingCommand,
    UpdateListingUseCase
 } from '../../application/use-cases/update-listing.usecase'
-import { PropertyRoomType } from '../../domain/entities/property.entity'
+import { Property, PropertyRoomType } from '../../domain/entities/property.entity'
 import { PropertyNotFoundException } from '../../domain/errors/listings.errors'
 import { ListingsRepository } from '../../domain/repositories/listings.repository'
 import { ListingsMapper } from '../mappers/listings.mapper'
@@ -290,14 +289,14 @@ export class ListingsController {
    }
 
    @Get('detail/:id')
-   @Public()
    @ApiOperation({ summary: 'Get full details of a property listing including reviews' })
    @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
-   async getPropertyDetail(@Param('id') id: string) {
+   async getPropertyDetail(@Param('id') id: string, @CurrentUser() user?: AuthenticatedUser) {
       const property = await this.listingsRepository.findById(id)
       if (!property) {
          throw new PropertyNotFoundException()
       }
+      this.assertPublicDetailVisible(property, user)
       return ApiResponse.success(
          {
             property: ListingsMapper.toListingResponse(property),
@@ -310,17 +309,33 @@ export class ListingsController {
    }
 
    @Get(':id')
-   @Public()
    @ApiOperation({ summary: 'Get basic property details by ID' })
    @ApiParam({ name: 'id', type: String, description: 'Property UUID' })
-   async getProperty(@Param('id') id: string) {
+   async getProperty(@Param('id') id: string, @CurrentUser() user?: AuthenticatedUser) {
       const property = await this.listingsRepository.findById(id)
       if (!property) {
          throw new PropertyNotFoundException()
       }
+      this.assertPublicDetailVisible(property, user)
       return ApiResponse.success(
          ListingsMapper.toListingResponse(property),
          'Listing details retrieved successfully'
       )
+   }
+
+   /**
+    * Paused/archived listings stay reachable only for the owner host and admins
+    * (e.g. the host edit page); everyone else gets a 404 so hidden listings are
+    * not served publicly nor leak their existence.
+    */
+   private assertPublicDetailVisible(property: Property, user?: AuthenticatedUser) {
+      const isPubliclyVisible = property.status === 'active' && property.deletedAt === null
+      if (isPubliclyVisible) return
+
+      const isOwner = user?.id === property.hostId
+      const isAdmin = user?.role === 'admin'
+      if (!isOwner && !isAdmin) {
+         throw new PropertyNotFoundException()
+      }
    }
 }

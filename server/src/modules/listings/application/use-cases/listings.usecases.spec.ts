@@ -24,6 +24,7 @@ import { Property } from '../../domain/entities/property.entity'
 import { PropertyLicense } from '../../domain/entities/property-license.entity'
 import {
    PropertyTypeNotFoundException,
+   PropertyNotFoundException,
    HostNotVerifiedException,
    PropertyLicenseRequiredException,
    UnauthorizedPropertyAccessException
@@ -496,33 +497,66 @@ describe('Listings Use Cases', () => {
             null
          )
 
-      const verifiedLicense = new PropertyLicense(
-         'license-123',
-         'property-123',
-         'VN-123',
-         'Hanoi Authority',
-         'https://example.com/license.pdf',
-         null,
-         'verified',
-         new Date('2026-08-20T00:00:00.000Z'),
-         new Date('2026-08-19T00:00:00.000Z')
-      )
+      const licenseWithExpiry = (expiryDate: Date | null) =>
+         new PropertyLicense(
+            'license-123',
+            'property-123',
+            'VN-123',
+            'Hanoi Authority',
+            'https://example.com/license.pdf',
+            expiryDate,
+            'verified',
+            new Date('2026-08-19T00:00:00.000Z'),
+            new Date('2026-08-19T00:00:00.000Z')
+         )
+      const verifiedLicense = licenseWithExpiry(new Date('2099-01-01T00:00:00.000Z'))
+      const expiredLicense = licenseWithExpiry(new Date('2020-01-01T00:00:00.000Z'))
 
-      it.each([true, false])(
-         'activates when both prerequisites pass (requiresLocalLicense=%s)',
-         async (requiresLocalLicense) => {
-            const existing = property(requiresLocalLicense)
-            findPropertyById.mockResolvedValue(existing)
-            checkHostKycVerified.mockResolvedValue(true)
-            findVerifiedLicense.mockResolvedValue(verifiedLicense)
-            updatePropertyStatus.mockResolvedValue(existing)
-            const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+      it('activates when host KYC is verified and the property requires a verified local license', async () => {
+         const existing = property(true)
+         findPropertyById.mockResolvedValue(existing)
+         checkHostKycVerified.mockResolvedValue(true)
+         findVerifiedLicense.mockResolvedValue(verifiedLicense)
+         updatePropertyStatus.mockResolvedValue(existing)
+         const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
 
-            await useCase.execute(new UpdatePropertyStatusAdminCommand(existing.id, 'active'))
+         const result = await useCase.execute(
+            new UpdatePropertyStatusAdminCommand(existing.id, 'active')
+         )
 
-            expect(updatePropertyStatus).toHaveBeenCalledWith(existing.id, 'active')
-         }
-      )
+         expect(result).toBe(existing)
+         expect(checkHostKycVerified).toHaveBeenCalledWith(existing.hostId)
+         expect(findVerifiedLicense).toHaveBeenCalledWith(existing.id)
+         expect(updatePropertyStatus).toHaveBeenCalledWith(existing.id, 'active')
+      })
+
+      it('activates without requiring a license when the property does not require one', async () => {
+         const existing = property(false)
+         findPropertyById.mockResolvedValue(existing)
+         checkHostKycVerified.mockResolvedValue(true)
+         updatePropertyStatus.mockResolvedValue(existing)
+         const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+
+         const result = await useCase.execute(
+            new UpdatePropertyStatusAdminCommand(existing.id, 'active')
+         )
+
+         expect(result).toBe(existing)
+         expect(checkHostKycVerified).toHaveBeenCalledWith(existing.hostId)
+         expect(findVerifiedLicense).not.toHaveBeenCalled()
+         expect(updatePropertyStatus).toHaveBeenCalledWith(existing.id, 'active')
+      })
+
+      it('rejects activation when the property does not exist', async () => {
+         findPropertyById.mockResolvedValue(null)
+         const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+
+         await expect(
+            useCase.execute(new UpdatePropertyStatusAdminCommand('missing-property', 'active'))
+         ).rejects.toBeInstanceOf(PropertyNotFoundException)
+         expect(checkHostKycVerified).not.toHaveBeenCalled()
+         expect(updatePropertyStatus).not.toHaveBeenCalled()
+      })
 
       it('rejects activation when host KYC is not verified', async () => {
          const existing = property(true)
@@ -537,21 +571,59 @@ describe('Listings Use Cases', () => {
          expect(updatePropertyStatus).not.toHaveBeenCalled()
       })
 
-      it.each([true, false])(
-         'rejects activation without a verified license (requiresLocalLicense=%s)',
-         async (requiresLocalLicense) => {
-            const existing = property(requiresLocalLicense)
-            findPropertyById.mockResolvedValue(existing)
-            checkHostKycVerified.mockResolvedValue(true)
-            findVerifiedLicense.mockResolvedValue(null)
-            const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+      it('rejects activation without a verified license when the property requires one', async () => {
+         const existing = property(true)
+         findPropertyById.mockResolvedValue(existing)
+         checkHostKycVerified.mockResolvedValue(true)
+         findVerifiedLicense.mockResolvedValue(null)
+         const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
 
-            await expect(
-               useCase.execute(new UpdatePropertyStatusAdminCommand(existing.id, 'active'))
-            ).rejects.toBeInstanceOf(PropertyLicenseRequiredException)
-            expect(updatePropertyStatus).not.toHaveBeenCalled()
-         }
-      )
+         await expect(
+            useCase.execute(new UpdatePropertyStatusAdminCommand(existing.id, 'active'))
+         ).rejects.toBeInstanceOf(PropertyLicenseRequiredException)
+         expect(updatePropertyStatus).not.toHaveBeenCalled()
+      })
+
+      it('rejects activation when the verified license is expired', async () => {
+         const existing = property(true)
+         findPropertyById.mockResolvedValue(existing)
+         checkHostKycVerified.mockResolvedValue(true)
+         findVerifiedLicense.mockResolvedValue(expiredLicense)
+         const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+
+         await expect(
+            useCase.execute(new UpdatePropertyStatusAdminCommand(existing.id, 'active'))
+         ).rejects.toBeInstanceOf(PropertyLicenseRequiredException)
+         expect(updatePropertyStatus).not.toHaveBeenCalled()
+      })
+
+      it('activates when the required license has no expiry date (never-expiring license)', async () => {
+         const existing = property(true)
+         findPropertyById.mockResolvedValue(existing)
+         checkHostKycVerified.mockResolvedValue(true)
+         findVerifiedLicense.mockResolvedValue(licenseWithExpiry(null))
+         updatePropertyStatus.mockResolvedValue(existing)
+         const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+
+         const result = await useCase.execute(
+            new UpdatePropertyStatusAdminCommand(existing.id, 'active')
+         )
+
+         expect(result).toBe(existing)
+         expect(updatePropertyStatus).toHaveBeenCalledWith(existing.id, 'active')
+      })
+
+      it('propagates repository failures instead of swallowing them', async () => {
+         const existing = property(false)
+         findPropertyById.mockResolvedValue(existing)
+         checkHostKycVerified.mockResolvedValue(true)
+         updatePropertyStatus.mockRejectedValue(new Error('database unavailable'))
+         const useCase = new UpdatePropertyStatusAdminUseCase(listingsRepository)
+
+         await expect(
+            useCase.execute(new UpdatePropertyStatusAdminCommand(existing.id, 'active'))
+         ).rejects.toThrow('database unavailable')
+      })
 
       it.each(['paused', 'archived'] as const)(
          'preserves the existing %s status behavior without activation checks',

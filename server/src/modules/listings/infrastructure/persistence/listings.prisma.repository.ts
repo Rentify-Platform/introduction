@@ -470,18 +470,34 @@ export class ListingsPrismaRepository implements ListingsRepository {
       id: string,
       status: 'active' | 'paused' | 'archived'
    ): Promise<Property> {
-      // 1. Update status (set deleted_at for archived, clear for others)
-      const record = await this.prisma.properties.update({
-         where: { id },
-         data: {
-            status: status,
-            updated_at: new Date(),
-            deleted_at: status === 'archived' ? new Date() : null
-         },
-         include: {
-            property_amenities: { include: { amenities: true } },
-            property_photos: { orderBy: { position: 'asc' } }
-         }
+      // Update status (set deleted_at for archived, clear for others) and record
+      // the outbox event for Meilisearch sync in ONE transaction, mirroring the
+      // host save flow so admin status changes stay search-consistent
+      const record = await this.prisma.$transaction(async (tx) => {
+         const updated = await tx.properties.update({
+            where: { id },
+            data: {
+               status: status,
+               updated_at: new Date(),
+               deleted_at: status === 'archived' ? new Date() : null
+            },
+            include: {
+               property_amenities: { include: { amenities: true } },
+               property_photos: { orderBy: { position: 'asc' } }
+            }
+         })
+
+         await tx.outbox_events.create({
+            data: {
+               aggregate_type: 'property',
+               aggregate_id: updated.id,
+               event_type: 'property.status.changed',
+               payload: { status: updated.status },
+               status: 'pending'
+            }
+         })
+
+         return updated
       })
 
       const amenities = (record as any).property_amenities.map((a: any) => ({
