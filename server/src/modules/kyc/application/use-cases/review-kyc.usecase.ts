@@ -51,6 +51,10 @@ export class ReviewKycUseCase {
       }
 
       // 4. Update status
+      // Model A (account-level KYC): identity document xác minh cá nhân, không gắn
+      // vai trò, nên status được propagate xuống CẢ guest và host profile (nếu có)
+      // qua updateProfileKycStatus — admin reject một document của host là chủ đích
+      // nghiệp vụ: host mất quyền publish vì danh tính chưa được xác minh.
       const finalDocStatus: KycDocStatus = command.action === 'approve' ? 'verified' : 'rejected'
       const profileKycStatus = command.action === 'approve' ? 'verified' : 'rejected'
 

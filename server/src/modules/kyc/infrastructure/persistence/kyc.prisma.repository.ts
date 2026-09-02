@@ -112,22 +112,29 @@ export class KycPrismaRepository implements KycRepository {
       accountId: string,
       status: 'unverified' | 'pending' | 'verified' | 'rejected' | 'expired'
    ): Promise<void> {
-      // 1. Update guest profile
-      await this.prisma.profiles.update({
-         where: { account_id: accountId },
-         data: { guest_kyc_status: status }
-      })
-
-      // 2. Update host profile if it exists
-      const hostProfile = await this.prisma.host_profiles.findUnique({
-         where: { account_id: accountId }
-      })
-      if (hostProfile) {
-         await this.prisma.host_profiles.update({
+      // Domain rule (Model A — KYC dùng chung cấp account): một quyết định KYC
+      // cập nhật CẢ guest và host profile (nếu host profile tồn tại). Hai update
+      // chạy trong MỘT interactive transaction để hai trạng thái không bao giờ
+      // lệch nhau khi một bước thất bại (Prisma không cho nest transaction nên
+      // cả hai chạy inline trên cùng transaction client).
+      await this.prisma.$transaction(async (tx) => {
+         // 1. Update guest profile
+         await tx.profiles.update({
             where: { account_id: accountId },
-            data: { kyc_status: status }
+            data: { guest_kyc_status: status }
          })
-      }
+
+         // 2. Update host profile if it exists
+         const hostProfile = await tx.host_profiles.findUnique({
+            where: { account_id: accountId }
+         })
+         if (hostProfile) {
+            await tx.host_profiles.update({
+               where: { account_id: accountId },
+               data: { kyc_status: status }
+            })
+         }
+      })
    }
 
    async findExpiringBackgroundChecks(): Promise<KycCheck[]> {
