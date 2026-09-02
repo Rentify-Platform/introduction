@@ -24,3 +24,9 @@ export class LedgerBalanceInsufficientException extends BusinessException {
       super('LEDGER_BALANCE_INSUFFICIENT', message, HttpStatus.BAD_REQUEST)
    }
 }
+
+export class LedgerAccountForbiddenException extends BusinessException {
+   constructor(message: string) {
+      super('LEDGER_ACCOUNT_FORBIDDEN', message, HttpStatus.FORBIDDEN)
+   }
+}

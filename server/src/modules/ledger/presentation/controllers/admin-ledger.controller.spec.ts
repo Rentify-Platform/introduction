@@ -33,7 +33,11 @@ describe('AdminLedgerController', () => {
          stubUseCase as never
       )
 
-      const result = await controller.getPlatformBalance()
+      const result = await controller.getPlatformBalance({
+         id: 'admin-1',
+         email: 'admin@test.dev',
+         role: 'admin'
+      })
 
       expect(executeGetBalance).toHaveBeenCalledWith(
          expect.objectContaining({
@@ -41,7 +45,8 @@ describe('AdminLedgerController', () => {
             ownerType: 'platform',
             ownerAccountId: null,
             accountSubtype: 'revenue',
-            currency: 'VND'
+            currency: 'VND',
+            actor: expect.objectContaining({ accountId: 'admin-1', role: 'admin' })
          })
       )
       expect(result.data).toEqual(

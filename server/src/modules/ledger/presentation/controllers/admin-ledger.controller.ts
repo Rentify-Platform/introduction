@@ -1,6 +1,7 @@
 import { Controller, Get, Patch, Body, Query, UseGuards } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 import {
+   GetBalanceActor,
    GetBalanceCommand,
    GetBalanceUseCase
 } from '../../application/use-cases/get-balance.usecase'
@@ -24,6 +25,7 @@ import { LedgerMapper } from '../mappers/ledger.mapper'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { Authorize } from '../../../../shared/decorators/authorize.decorator'
 import { JwtAuthGuard } from '../../../auth/infrastructure/jwt-auth.guard'
+import { CurrentUser, AuthenticatedUser } from '../../../auth/presentation/current-user.decorator'
 
 @ApiTags('Admin - Ledger')
 @ApiBearerAuth('bearer')
@@ -42,9 +44,16 @@ export class AdminLedgerController {
    @UseGuards(JwtAuthGuard)
    @Authorize('admin')
    @ApiOperation({ summary: 'Get the Rentify platform revenue balance in VND' })
-   async getPlatformBalance() {
+   async getPlatformBalance(@CurrentUser() user: AuthenticatedUser) {
       const balance = await this.getBalanceUseCase.execute(
-         new GetBalanceCommand(null, 'platform', null, 'revenue', 'VND')
+         new GetBalanceCommand(
+            null,
+            'platform',
+            null,
+            'revenue',
+            'VND',
+            GetBalanceActor.fromAuthenticatedUser(user)
+         )
       )
 
       return ApiResponse.success(

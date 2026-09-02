@@ -4,7 +4,11 @@ import {
    PostTransactionCommand,
    PostTransactionEntryCommand
 } from '../use-cases/post-transaction.usecase'
-import { GetBalanceUseCase, GetBalanceCommand } from '../use-cases/get-balance.usecase'
+import {
+   GetBalanceActor,
+   GetBalanceCommand,
+   GetBalanceUseCase
+} from '../use-cases/get-balance.usecase'
 import { LedgerTransaction } from '../../domain/entities/ledger-transaction.entity'
 
 @Injectable()
@@ -28,7 +32,8 @@ export class TaxService {
          'platform',
          null,
          `tax_payable_${jurisdiction.toLowerCase()}`, // E.g., tax_payable_us, tax_payable_vn
-         currency
+         currency,
+         GetBalanceActor.system()
       )
 
       const balance = await this.getBalanceUseCase.execute(getBalanceCommand)
