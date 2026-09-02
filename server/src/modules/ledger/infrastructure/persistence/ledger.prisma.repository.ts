@@ -69,12 +69,14 @@ export class LedgerPrismaRepository implements LedgerRepository {
       ownerType: LedgerOwnerType,
       ownerAccountId: string | null,
       accountSubtype: string,
-      currency: string
+      currency: string,
+      tx?: Prisma.TransactionClient
    ): Promise<LedgerAccount | null> {
+      const db = tx ?? this.prisma
       const normalizedSubtype = accountSubtype.toLowerCase()
       const normalizedCurrency = currency.toUpperCase()
 
-      const record = await this.prisma.ledger_accounts.findFirst({
+      const record = await db.ledger_accounts.findFirst({
          where: {
             owner_type: ownerType,
             owner_account_id: ownerAccountId,
@@ -87,8 +89,12 @@ export class LedgerPrismaRepository implements LedgerRepository {
       return this.mapToAccountEntity(record)
    }
 
-   async saveAccount(account: LedgerAccount): Promise<LedgerAccount> {
-      const record = await this.prisma.ledger_accounts.upsert({
+   async saveAccount(
+      account: LedgerAccount,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerAccount> {
+      const db = tx ?? this.prisma
+      const record = await db.ledger_accounts.upsert({
          where: { id: account.id },
          update: {
             owner_type: account.ownerType,
@@ -112,9 +118,16 @@ export class LedgerPrismaRepository implements LedgerRepository {
       ownerType: LedgerOwnerType,
       ownerAccountId: string | null,
       accountSubtype: string,
-      currency: string
+      currency: string,
+      tx?: Prisma.TransactionClient
    ): Promise<LedgerAccount> {
-      const existing = await this.findAccount(ownerType, ownerAccountId, accountSubtype, currency)
+      const existing = await this.findAccount(
+         ownerType,
+         ownerAccountId,
+         accountSubtype,
+         currency,
+         tx
+      )
       if (existing) {
          return existing
       }
@@ -127,7 +140,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
       })
 
       try {
-         return await this.saveAccount(newAccount)
+         return await this.saveAccount(newAccount, tx)
       } catch (err: any) {
          // Handle unique key violation (P2002) for parallel requests
          if (err.code === 'P2002') {
@@ -135,7 +148,8 @@ export class LedgerPrismaRepository implements LedgerRepository {
                ownerType,
                ownerAccountId,
                accountSubtype,
-               currency
+               currency,
+               tx
             )
             if (found) {
                return found
@@ -174,8 +188,12 @@ export class LedgerPrismaRepository implements LedgerRepository {
       return this.mapToTransactionEntity(record)
    }
 
-   async findTransactionByIdempotencyKey(key: string): Promise<LedgerTransaction | null> {
-      const record = await this.prisma.ledger_transactions.findUnique({
+   async findTransactionByIdempotencyKey(
+      key: string,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerTransaction | null> {
+      const db = tx ?? this.prisma
+      const record = await db.ledger_transactions.findUnique({
          where: { idempotency_key: key },
          include: { ledger_entries: true }
       })
@@ -184,10 +202,13 @@ export class LedgerPrismaRepository implements LedgerRepository {
       return this.mapToTransactionEntity(record)
    }
 
-   async saveTransaction(transaction: LedgerTransaction): Promise<LedgerTransaction> {
-      return this.prisma.$transaction(async (tx) => {
+   async saveTransaction(
+      transaction: LedgerTransaction,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerTransaction> {
+      const run = async (db: Prisma.TransactionClient): Promise<LedgerTransaction> => {
          // Create the transaction
-         await tx.ledger_transactions.create({
+         await db.ledger_transactions.create({
             data: {
                id: transaction.id,
                idempotency_key: transaction.idempotencyKey,
@@ -202,7 +223,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
 
          // Create the entries
          for (const entry of transaction.entries) {
-            await tx.ledger_entries.create({
+            await db.ledger_entries.create({
                data: {
                   transaction_id: transaction.id,
                   ledger_account_id: entry.ledgerAccountId,
@@ -213,7 +234,15 @@ export class LedgerPrismaRepository implements LedgerRepository {
          }
 
          return transaction
-      })
+      }
+
+      // When called inside an outer interactive transaction, run inline so the
+      // caller's atomicity (e.g. cancellation override) is preserved. Prisma does
+      // not support nesting interactive transactions on the tx client.
+      if (tx) {
+         return run(tx)
+      }
+      return this.prisma.$transaction(run)
    }
 
    async findEntriesByAccountId(accountId: string): Promise<LedgerEntry[]> {

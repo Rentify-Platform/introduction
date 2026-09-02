@@ -208,7 +208,22 @@ export class AdminBookingsController {
          hostPayoutCents: request.hostPayoutCents,
          platformFeeKeptCents: request.platformFeeKeptCents
       }
-      await this.adminOverrideCancellationUseCase.execute(command)
-      return ApiResponse.success(null, 'Cancellation overridden successfully')
+      const result = await this.adminOverrideCancellationUseCase.execute(command)
+      return ApiResponse.success(
+         {
+            bookingId: id,
+            guestRefundCents: result.next.guestRefundCents.toString(),
+            hostPayoutCents: result.next.hostPayoutCents.toString(),
+            platformFeeKeptCents: result.next.platformFeeKeptCents.toString(),
+            previousGuestRefundCents: result.previous.guestRefundCents.toString(),
+            previousHostPayoutCents: result.previous.hostPayoutCents.toString(),
+            previousPlatformFeeKeptCents: result.previous.platformFeeKeptCents.toString(),
+            guestRefundDeltaCents: result.deltas.guestRefundCents.toString(),
+            hostPayoutDeltaCents: result.deltas.hostPayoutCents.toString(),
+            platformFeeDeltaCents: result.deltas.platformFeeKeptCents.toString(),
+            ledgerTransactionId: result.ledgerTransactionId
+         },
+         'Cancellation overridden successfully'
+      )
    }
 }

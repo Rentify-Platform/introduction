@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { LedgerAccount, LedgerOwnerType } from '../entities/ledger-account.entity'
 import { LedgerBalance } from '../entities/ledger-balance.entity'
 import { LedgerTransaction } from '../entities/ledger-transaction.entity'
@@ -45,16 +46,21 @@ export abstract class LedgerRepository {
       ownerType: LedgerOwnerType,
       ownerAccountId: string | null,
       accountSubtype: string,
-      currency: string
+      currency: string,
+      tx?: Prisma.TransactionClient
    ): Promise<LedgerAccount | null>
 
-   abstract saveAccount(account: LedgerAccount): Promise<LedgerAccount>
+   abstract saveAccount(
+      account: LedgerAccount,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerAccount>
 
    abstract getOrCreateAccount(
       ownerType: LedgerOwnerType,
       ownerAccountId: string | null,
       accountSubtype: string,
-      currency: string
+      currency: string,
+      tx?: Prisma.TransactionClient
    ): Promise<LedgerAccount>
 
    abstract findBalance(ledgerAccountId: string): Promise<LedgerBalance | null>
@@ -68,9 +74,15 @@ export abstract class LedgerRepository {
 
    abstract findTransactionById(id: string): Promise<LedgerTransaction | null>
 
-   abstract findTransactionByIdempotencyKey(key: string): Promise<LedgerTransaction | null>
+   abstract findTransactionByIdempotencyKey(
+      key: string,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerTransaction | null>
 
-   abstract saveTransaction(transaction: LedgerTransaction): Promise<LedgerTransaction>
+   abstract saveTransaction(
+      transaction: LedgerTransaction,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerTransaction>
 
    abstract findEntriesByAccountId(accountId: string): Promise<LedgerEntry[]>
 

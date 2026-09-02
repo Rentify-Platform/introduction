@@ -136,13 +136,18 @@ model cancellations {
   platform_fee_kept_cents                                  BigInt                     @default(0)
   override_reason                                          String?
   override_by_admin_id                                     String?                    @db.Uuid
+  override_previous_guest_refund_cents                     BigInt?
+  override_previous_host_payout_cents                      BigInt?
+  override_previous_platform_fee_kept_cents                BigInt?
+  override_ledger_transaction_id                           String?                    @db.Uuid
   ledger_transaction_id                                    String?                    @db.Uuid
   created_at                                               DateTime                   @default(now()) @db.Timestamptz(6)
   cancellation_policies                                    cancellation_policies      @relation(fields: [applied_policy_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
   cancellation_policy_tiers                                cancellation_policy_tiers? @relation(fields: [applied_tier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   bookings                                                 bookings                   @relation(fields: [booking_id], references: [id], onUpdate: NoAction)
   accounts_cancellations_cancelled_by_account_idToaccounts accounts?                  @relation("cancellations_cancelled_by_account_idToaccounts", fields: [cancelled_by_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  ledger_transactions                                      ledger_transactions?       @relation(fields: [ledger_transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ledger_transactions_cancellations_ledger_transaction_id  ledger_transactions?       @relation("cancellations_ledger_transaction_idToledger_transactions", fields: [ledger_transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ledger_transactions_cancellations_override_ledger_transc ledger_transactions?       @relation("cancellations_override_ledger_transaction_idToledger_transactions", fields: [override_ledger_transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   accounts_cancellations_override_by_admin_idToaccounts    accounts?                  @relation("cancellations_override_by_admin_idToaccounts", fields: [override_by_admin_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([booking_id], map: "idx_cancellations_booking")
@@ -266,7 +271,8 @@ model ledger_transactions {
   metadata        Json?
   created_by      String?          @db.Uuid
   created_at      DateTime         @default(now()) @db.Timestamptz(6)
-  cancellations   cancellations[]
+  cancellations                cancellations[] @relation("cancellations_ledger_transaction_idToledger_transactions")
+  override_cancellations       cancellations[] @relation("cancellations_override_ledger_transaction_idToledger_transactions")
   ledger_entries  ledger_entries[]
   bookings        bookings?        @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   accounts        accounts?        @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)

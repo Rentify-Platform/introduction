@@ -46,6 +46,13 @@ export class AdminCancellationsController {
             platformFeeKeptCents: item.platform_fee_kept_cents?.toString(),
             overrideReason: item.override_reason,
             overrideByAdminId: item.override_by_admin_id,
+            overridePreviousGuestRefundCents:
+               item.override_previous_guest_refund_cents?.toString() ?? null,
+            overridePreviousHostPayoutCents:
+               item.override_previous_host_payout_cents?.toString() ?? null,
+            overridePreviousPlatformFeeKeptCents:
+               item.override_previous_platform_fee_kept_cents?.toString() ?? null,
+            overrideLedgerTransactionId: item.override_ledger_transaction_id,
             createdAt: item.created_at.toISOString()
          }
       })
