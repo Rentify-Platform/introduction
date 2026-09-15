@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 
 export function PenaltiesManagementContainer() {
-   const [page, setPage] = React.useState(1)
+   const page = 1
    const [isAddModalOpen, setIsAddModalOpen] = React.useState(false)
-   
+
    const { data } = usePenaltiesQuery(page, 20)
-   const { deletePenalty } = usePenaltiesMutations()
+   const { voidPenalty, isVoiding } = usePenaltiesMutations()
 
    return (
       <div className="space-y-4">
@@ -22,15 +22,13 @@ export function PenaltiesManagementContainer() {
             </Button>
          </div>
 
-         <PenaltiesTable 
-            penalties={data?.data || []} 
-            onDelete={deletePenalty}
+         <PenaltiesTable
+            penalties={data?.data || []}
+            onVoid={(id, reason, onSuccess) => voidPenalty({ id, reason }, { onSuccess })}
+            isVoiding={isVoiding}
          />
 
-         <AddPenaltyModal 
-            isOpen={isAddModalOpen} 
-            onClose={() => setIsAddModalOpen(false)} 
-         />
+         <AddPenaltyModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
       </div>
    )
 }

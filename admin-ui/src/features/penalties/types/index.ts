@@ -15,5 +15,9 @@ export interface Penalty {
    penaltyType: string
    amountCents: string
    notes?: string
+   status: 'active' | 'voided'
+   voidedAt?: string | null
+   voidReason?: string | null
+   voidedByAdminId?: string | null
    createdAt: string
 }

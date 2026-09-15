@@ -10,14 +10,17 @@ import {
 import { Button } from '@/components/ui/button'
 import { Penalty } from '../types'
 import { formatVND } from '@/lib/utils'
-import { Trash2 } from 'lucide-react'
+import { ShieldOff } from 'lucide-react'
+import { VoidPenaltyDialog } from './void-penalty-dialog'
 
 interface PenaltiesTableProps {
    penalties: Penalty[]
-   onDelete: (id: string) => void
+   isVoiding: boolean
+   onVoid: (id: string, reason: string, onSuccess: () => void) => void
 }
 
-export function PenaltiesTable({ penalties, onDelete }: PenaltiesTableProps) {
+export function PenaltiesTable({ penalties, isVoiding, onVoid }: PenaltiesTableProps) {
+   const [selectedPenaltyId, setSelectedPenaltyId] = React.useState<string | null>(null)
    return (
       <div className="rounded-md border">
          <Table>
@@ -35,7 +38,7 @@ export function PenaltiesTable({ penalties, onDelete }: PenaltiesTableProps) {
             <TableBody>
                {penalties.length === 0 ? (
                   <TableRow>
-                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                     <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
                         No penalties found
                      </TableCell>
                   </TableRow>
@@ -45,24 +48,25 @@ export function PenaltiesTable({ penalties, onDelete }: PenaltiesTableProps) {
                         <TableCell>{new Date(p.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell>
                            <div>{p.hostName}</div>
-                           <div className="text-xs text-muted-foreground">{p.hostEmail}</div>
+                           <div className="text-muted-foreground text-xs">{p.hostEmail}</div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{p.bookingId ? `${p.bookingId.split('-')[0]}...` : 'N/A'}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                           {p.bookingId ? `${p.bookingId.split('-')[0]}...` : 'N/A'}
+                        </TableCell>
                         <TableCell>{p.penaltyType}</TableCell>
-                        <TableCell className="text-destructive font-medium">{formatVND(Number(p.amountCents || 0))}</TableCell>
+                        <TableCell className="text-destructive font-medium">
+                           {formatVND(Number(p.amountCents || 0))}
+                        </TableCell>
                         <TableCell className="max-w-[200px] truncate">{p.notes}</TableCell>
                         <TableCell className="text-right">
                            <Button
                               variant="ghost"
                               size="sm"
+                              disabled={isVoiding || p.status === 'voided'}
                               className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                              onClick={() => {
-                                 if (confirm('Are you sure you want to delete this penalty?')) {
-                                    onDelete(p.id)
-                                 }
-                              }}
+                              onClick={() => setSelectedPenaltyId(p.id)}
                            >
-                              <Trash2 className="h-4 w-4" />
+                              <ShieldOff className="h-4 w-4" />
                            </Button>
                         </TableCell>
                      </TableRow>
@@ -70,6 +74,13 @@ export function PenaltiesTable({ penalties, onDelete }: PenaltiesTableProps) {
                )}
             </TableBody>
          </Table>
+         <VoidPenaltyDialog
+            penaltyId={selectedPenaltyId}
+            isOpen={!!selectedPenaltyId}
+            isPending={isVoiding}
+            onClose={() => setSelectedPenaltyId(null)}
+            onConfirm={(id, reason) => onVoid(id, reason, () => setSelectedPenaltyId(null))}
+         />
       </div>
    )
 }

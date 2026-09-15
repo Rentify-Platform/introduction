@@ -10,4 +10,5 @@ export interface HostProfile {
 
 export interface ToggleSuperhostRequest {
    isSuperhost: boolean
+   reason: string
 }

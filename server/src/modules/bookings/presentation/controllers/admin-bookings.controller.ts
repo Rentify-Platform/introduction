@@ -27,6 +27,7 @@ import { BookingsMapper } from '../mappers/bookings.mapper'
 import { CancelBookingRequest } from '../requests/cancel-booking.request'
 import { OverrideCancellationRequest } from '../requests/override-cancellation.request'
 import { AdminOverrideCancellationUseCase } from '../../application/use-cases/admin-override-cancellation.usecase'
+import { parseAdminPagination } from '../../../../shared/query/admin-query-parser'
 
 @ApiTags('Admin - Bookings')
 @ApiBearerAuth('bearer')
@@ -85,14 +86,15 @@ export class AdminBookingsController {
       @Query('page') page?: string,
       @Query('limit') limit?: string
    ) {
+      const pagination = parseAdminPagination(page, limit)
       const command = new ListAllBookingsCommand(
          search,
          status,
          guestId,
          hostId,
          propertyId,
-         page ? parseInt(page, 10) : 1,
-         limit ? parseInt(limit, 10) : 20
+         pagination.page,
+         pagination.limit
       )
 
       const result = await this.listAllBookingsUseCase.execute(command)

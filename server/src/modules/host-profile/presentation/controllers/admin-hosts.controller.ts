@@ -4,13 +4,20 @@ import { Authorize } from '../../../../shared/decorators/authorize.decorator'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { PrismaService } from '../../../../prisma/prisma.service'
 import { ToggleSuperhostUseCase } from '../../application/use-cases/toggle-superhost.usecase'
-import { IsBoolean } from 'class-validator'
+import { IsBoolean, IsNotEmpty, IsString } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
+import { AuthenticatedUser, CurrentUser } from '../../../auth/presentation/current-user.decorator'
+import { parseAdminPagination } from '../../../../shared/query/admin-query-parser'
 
 export class ToggleSuperhostRequest {
    @ApiProperty({ example: true })
    @IsBoolean()
    isSuperhost: boolean
+
+   @ApiProperty({ example: 'Host met all superhost requirements' })
+   @IsString()
+   @IsNotEmpty()
+   reason: string
 }
 
 @ApiTags('Admin - Hosts')
@@ -28,14 +35,13 @@ export class AdminHostsController {
    @ApiQuery({ name: 'page', required: false, type: Number })
    @ApiQuery({ name: 'limit', required: false, type: Number })
    async list(@Query('page') page?: string, @Query('limit') limit?: string) {
-      const p = page ? parseInt(page, 10) : 1
-      const l = limit ? parseInt(limit, 10) : 20
-      const skip = (p - 1) * l
+      const pagination = parseAdminPagination(page, limit)
+      const skip = (pagination.page - 1) * pagination.limit
 
       const [data, total] = await Promise.all([
          this.prisma.host_profiles.findMany({
             skip,
-            take: l,
+            take: pagination.limit,
             orderBy: { created_at: 'desc' },
             include: {
                accounts: {
@@ -65,8 +71,8 @@ export class AdminHostsController {
          {
             data: formatted,
             total,
-            page: p,
-            limit: l
+            page: pagination.page,
+            limit: pagination.limit
          },
          'Hosts retrieved successfully'
       )
@@ -78,11 +84,14 @@ export class AdminHostsController {
    @ApiParam({ name: 'accountId', type: String })
    async toggleSuperhost(
       @Param('accountId') accountId: string,
-      @Body() request: ToggleSuperhostRequest
+      @Body() request: ToggleSuperhostRequest,
+      @CurrentUser() user: AuthenticatedUser
    ) {
       await this.toggleSuperhostUseCase.execute({
          accountId,
-         isSuperhost: request.isSuperhost
+         isSuperhost: request.isSuperhost,
+         adminId: user.id,
+         reason: request.reason
       })
       return ApiResponse.success(
          null,

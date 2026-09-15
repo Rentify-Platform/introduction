@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { Authorize } from '../../../../shared/decorators/authorize.decorator'
 import { ApiResponse } from '../../../../shared/response/api-response'
 import { ListCancellationsUseCase } from '../../application/use-cases/list-cancellations.usecase'
+import { parseAdminPagination } from '../../../../shared/query/admin-query-parser'
 
 @ApiTags('Admin - Cancellations')
 @ApiBearerAuth('bearer')
@@ -21,9 +22,12 @@ export class AdminCancellationsController {
       @Query('limit') limit?: string,
       @Query('propertyId') propertyId?: string
    ) {
-      const p = page ? parseInt(page, 10) : 1
-      const l = limit ? parseInt(limit, 10) : 20
-      const result = await this.listCancellationsUseCase.execute(p, l, propertyId)
+      const pagination = parseAdminPagination(page, limit)
+      const result = await this.listCancellationsUseCase.execute(
+         pagination.page,
+         pagination.limit,
+         propertyId
+      )
 
       const formatted = result.data.map((item) => {
          const booking = item.bookings

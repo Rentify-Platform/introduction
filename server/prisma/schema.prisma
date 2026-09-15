@@ -25,7 +25,8 @@ model accounts {
   bookings_bookings_host_idToaccounts                           bookings[]            @relation("bookings_host_idToaccounts")
   cancellations_cancellations_cancelled_by_account_idToaccounts cancellations[]       @relation("cancellations_cancelled_by_account_idToaccounts")
   cancellations_cancellations_override_by_admin_idToaccounts    cancellations[]       @relation("cancellations_override_by_admin_idToaccounts")
-  host_penalties                                                host_penalties[]
+  host_penalties                                                host_penalties[]      @relation("host_penalties_host_idToaccounts")
+  host_penalties_voided_by_admin_idToaccounts                   host_penalties[]      @relation("host_penalties_voided_by_admin_idToaccounts")
   host_profiles                                                 host_profiles?
   kyc_checks                                                    kyc_checks[]
   kyc_documents_kyc_documents_account_idToaccounts              kyc_documents[]       @relation("kyc_documents_account_idToaccounts")
@@ -36,6 +37,7 @@ model accounts {
   payouts                                                       payouts[]
   profiles                                                      profiles?
   properties                                                    properties[]
+  host_profiles_superhost_updated_by_admin_idToaccounts         host_profiles[]       @relation("host_profiles_superhost_updated_by_admin_idToaccounts")
   reviews_reviews_author_idToaccounts                           reviews[]             @relation("reviews_author_idToaccounts")
   reviews_reviews_target_idToaccounts                           reviews[]             @relation("reviews_target_idToaccounts")
   wishlists                                                     wishlists[]
@@ -154,36 +156,45 @@ model cancellations {
 }
 
 model host_penalties {
-  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  host_id      String    @db.Uuid
-  booking_id   String?   @db.Uuid
-  penalty_type String
-  amount_cents BigInt    @default(0)
-  notes        String?
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  bookings     bookings? @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  accounts     accounts  @relation(fields: [host_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                                                   String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  host_id                                              String    @db.Uuid
+  booking_id                                           String?   @db.Uuid
+  penalty_type                                         String
+  amount_cents                                         BigInt    @default(0)
+  notes                                                String?
+  status                                               String    @default("active")
+  voided_at                                            DateTime? @db.Timestamptz(6)
+  void_reason                                          String?
+  voided_by_admin_id                                   String?   @db.Uuid
+  created_at                                           DateTime  @default(now()) @db.Timestamptz(6)
+  bookings                                             bookings? @relation(fields: [booking_id], references: [id], onDelete: NoAction)
+  accounts                                             accounts  @relation("host_penalties_host_idToaccounts", fields: [host_id], references: [id], onDelete: NoAction)
+  accounts_host_penalties_voided_by_admin_idToaccounts accounts? @relation("host_penalties_voided_by_admin_idToaccounts", fields: [voided_by_admin_id], references: [id], onDelete: SetNull)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model host_profiles {
-  account_id              String     @id @db.Uuid
-  about                   String?
-  is_superhost            Boolean    @default(false)
-  response_rate_pct       Int?       @db.SmallInt
-  avg_response_minutes    Int?
-  kyc_status              kyc_status @default(unverified)
-  tax_country             String?    @db.Char(2)
-  tax_id_enc              Bytes?
-  tax_form_type           String?
-  tax_verified            Boolean    @default(false)
-  payout_provider         String?
-  payout_account_id       String?
-  payout_account_verified Boolean    @default(false)
-  became_host_at          DateTime   @default(now()) @db.Timestamptz(6)
-  created_at              DateTime   @default(now()) @db.Timestamptz(6)
-  updated_at              DateTime   @default(now()) @db.Timestamptz(6)
-  accounts                accounts   @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  account_id                                       String     @id @db.Uuid
+  about                                            String?
+  is_superhost                                     Boolean    @default(false)
+  superhost_updated_at                             DateTime?  @db.Timestamptz(6)
+  superhost_update_reason                          String?
+  superhost_updated_by_admin_id                    String?    @db.Uuid
+  response_rate_pct                                Int?       @db.SmallInt
+  avg_response_minutes                             Int?
+  kyc_status                                       kyc_status @default(unverified)
+  tax_country                                      String?    @db.Char(2)
+  tax_id_enc                                       Bytes?
+  tax_form_type                                    String?
+  tax_verified                                     Boolean    @default(false)
+  payout_provider                                  String?
+  payout_account_id                                String?
+  payout_account_verified                          Boolean    @default(false)
+  became_host_at                                   DateTime   @default(now()) @db.Timestamptz(6)
+  created_at                                       DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at                                       DateTime   @default(now()) @db.Timestamptz(6)
+  accounts                                         accounts   @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  accounts_superhost_updated_by_admin_idToaccounts accounts?  @relation("host_profiles_superhost_updated_by_admin_idToaccounts", fields: [superhost_updated_by_admin_id], references: [id], onDelete: SetNull)
 }
 
 model kyc_checks {
@@ -263,21 +274,21 @@ model ledger_entries {
 }
 
 model ledger_transactions {
-  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  idempotency_key String           @unique
-  type            ledger_txn_type
-  booking_id      String?          @db.Uuid
-  description     String?
-  metadata        Json?
-  created_by      String?          @db.Uuid
-  created_at      DateTime         @default(now()) @db.Timestamptz(6)
-  cancellations                cancellations[] @relation("cancellations_ledger_transaction_idToledger_transactions")
-  override_cancellations       cancellations[] @relation("cancellations_override_ledger_transaction_idToledger_transactions")
-  ledger_entries  ledger_entries[]
-  bookings        bookings?        @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  accounts        accounts?        @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  payments        payments[]
-  payouts         payouts[]
+  id                     String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  idempotency_key        String           @unique
+  type                   ledger_txn_type
+  booking_id             String?          @db.Uuid
+  description            String?
+  metadata               Json?
+  created_by             String?          @db.Uuid
+  created_at             DateTime         @default(now()) @db.Timestamptz(6)
+  cancellations          cancellations[]  @relation("cancellations_ledger_transaction_idToledger_transactions")
+  override_cancellations cancellations[]  @relation("cancellations_override_ledger_transaction_idToledger_transactions")
+  ledger_entries         ledger_entries[]
+  bookings               bookings?        @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  accounts               accounts?        @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments               payments[]
+  payouts                payouts[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

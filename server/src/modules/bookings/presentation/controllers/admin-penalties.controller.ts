@@ -1,10 +1,22 @@
-import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common'
+import { Controller, Get, Post, Param, Body, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { Authorize } from '../../../../shared/decorators/authorize.decorator'
 import { ApiResponse } from '../../../../shared/response/api-response'
-import { ManageHostPenaltiesUseCase } from '../../application/use-cases/manage-host-penalties.usecase'
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator'
+import {
+   HOST_PENALTY_TYPES,
+   ManageHostPenaltiesUseCase
+} from '../../application/use-cases/manage-host-penalties.usecase'
+import { IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { parseAdminPagination } from '../../../../shared/query/admin-query-parser'
+import { AuthenticatedUser, CurrentUser } from '../../../auth/presentation/current-user.decorator'
+
+export class VoidPenaltyRequest {
+   @ApiProperty({ example: 'Penalty was created in error' })
+   @IsString()
+   @IsNotEmpty()
+   reason: string
+}
 
 export class CreatePenaltyRequest {
    @ApiProperty({ example: 'uuid' })
@@ -17,13 +29,15 @@ export class CreatePenaltyRequest {
    @IsOptional()
    bookingId?: string
 
-   @ApiProperty({ example: 'host_cancellation' })
+   @ApiProperty({ example: 'host_cancellation', enum: HOST_PENALTY_TYPES })
    @IsString()
    @IsNotEmpty()
+   @IsIn(HOST_PENALTY_TYPES)
    penaltyType: string
 
-   @ApiProperty({ example: 500000 })
-   @IsNumber()
+   @ApiProperty({ example: 500000, type: Number })
+   @IsNumber({ allowNaN: false, allowInfinity: false })
+   @IsInt()
    @Min(0)
    amountCents: number
 
@@ -50,9 +64,12 @@ export class AdminPenaltiesController {
       @Query('page') page?: string,
       @Query('limit') limit?: string
    ) {
-      const p = page ? parseInt(page, 10) : 1
-      const l = limit ? parseInt(limit, 10) : 20
-      const result = await this.manageHostPenaltiesUseCase.listPenalties(hostId, p, l)
+      const pagination = parseAdminPagination(page, limit)
+      const result = await this.manageHostPenaltiesUseCase.listPenalties(
+         hostId,
+         pagination.page,
+         pagination.limit
+      )
 
       const formatted = result.data.map((item) => ({
          id: item.id,
@@ -65,6 +82,10 @@ export class AdminPenaltiesController {
          penaltyType: item.penalty_type,
          amountCents: item.amount_cents.toString(),
          notes: item.notes,
+         status: item.status,
+         voidedAt: item.voided_at?.toISOString() ?? null,
+         voidReason: item.void_reason,
+         voidedByAdminId: item.voided_by_admin_id,
          createdAt: item.created_at.toISOString()
       }))
 
@@ -93,12 +114,23 @@ export class AdminPenaltiesController {
       )
    }
 
-   @Delete(':id')
+   @Post(':id/void')
    @Authorize('admin')
-   @ApiOperation({ summary: 'Delete a host penalty (Admin only)' })
+   @ApiOperation({ summary: 'Void a host penalty with an audit reason (Admin only)' })
    @ApiParam({ name: 'id', type: String })
-   async delete(@Param('id') id: string) {
-      await this.manageHostPenaltiesUseCase.deletePenalty(id)
-      return ApiResponse.success(null, 'Penalty deleted successfully')
+   async voidPenalty(
+      @Param('id') id: string,
+      @Body() request: VoidPenaltyRequest,
+      @CurrentUser() user: AuthenticatedUser
+   ) {
+      const penalty = await this.manageHostPenaltiesUseCase.voidPenalty({
+         penaltyId: id,
+         adminId: user.id,
+         reason: request.reason
+      })
+      return ApiResponse.success(
+         { id: penalty.id, status: penalty.status, voidedAt: penalty.voided_at?.toISOString() },
+         'Penalty voided successfully'
+      )
    }
 }

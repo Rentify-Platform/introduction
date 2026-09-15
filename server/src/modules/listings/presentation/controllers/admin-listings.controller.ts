@@ -16,6 +16,7 @@ import {
 } from '../../application/use-cases/get-property-license-admin.usecase'
 import { UpdatePropertyStatusAdminRequest } from '../requests/update-property-status-admin.request'
 import { ListingsMapper } from '../mappers/listings.mapper'
+import { parseAdminPagination } from '../../../../shared/query/admin-query-parser'
 
 @ApiTags('Admin - Listings')
 @ApiBearerAuth('bearer')
@@ -62,19 +63,20 @@ export class AdminListingsController {
       @Query('page') page?: string,
       @Query('limit') limit?: string
    ) {
+      const pagination = parseAdminPagination(page, limit)
       const command = new ListPropertiesAdminCommand(
          search,
          status,
          hostId,
-         page ? parseInt(page, 10) : 1,
-         limit ? parseInt(limit, 10) : 20
+         pagination.page,
+         pagination.limit
       )
 
       const result = await this.listPropertiesAdminUseCase.execute(command)
 
       return ApiResponse.success(
          {
-            data: result.data.map(ListingsMapper.toListingResponse),
+            data: result.data.map((item) => ListingsMapper.toListingResponse(item)),
             total: result.total,
             page: result.page,
             limit: result.limit

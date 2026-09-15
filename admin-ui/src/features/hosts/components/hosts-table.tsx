@@ -34,7 +34,7 @@ export function HostsTable({ hosts }: HostsTableProps) {
             <TableBody>
                {hosts.length === 0 ? (
                   <TableRow>
-                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                     <TableCell colSpan={6} className="text-muted-foreground py-8 text-center">
                         No hosts found
                      </TableCell>
                   </TableRow>
@@ -43,16 +43,26 @@ export function HostsTable({ hosts }: HostsTableProps) {
                      <TableRow key={h.accountId}>
                         <TableCell className="font-medium">{h.name}</TableCell>
                         <TableCell>{h.email}</TableCell>
-                        <TableCell className="capitalize">{h.kycStatus?.replace('_', ' ')}</TableCell>
+                        <TableCell className="capitalize">
+                           {h.kycStatus?.replace('_', ' ')}
+                        </TableCell>
                         <TableCell>{h.responseRatePct}%</TableCell>
                         <TableCell>{new Date(h.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right flex justify-end">
+                        <TableCell className="flex justify-end text-right">
                            <Switch
                               checked={h.isSuperhost}
                               disabled={isToggling}
-                              onCheckedChange={(checked: boolean) => 
-                                 toggleSuperhost({ accountId: h.accountId, data: { isSuperhost: checked } })
-                              }
+                              onCheckedChange={(checked: boolean) => {
+                                 const reason = window.prompt(
+                                    `${checked ? 'Enable' : 'Disable'} superhost reason`
+                                 )
+                                 if (reason?.trim()) {
+                                    toggleSuperhost({
+                                       accountId: h.accountId,
+                                       data: { isSuperhost: checked, reason: reason.trim() }
+                                    })
+                                 }
+                              }}
                            />
                         </TableCell>
                      </TableRow>

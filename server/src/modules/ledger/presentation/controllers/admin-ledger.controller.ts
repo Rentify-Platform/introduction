@@ -26,6 +26,11 @@ import { ApiResponse } from '../../../../shared/response/api-response'
 import { Authorize } from '../../../../shared/decorators/authorize.decorator'
 import { JwtAuthGuard } from '../../../auth/infrastructure/jwt-auth.guard'
 import { CurrentUser, AuthenticatedUser } from '../../../auth/presentation/current-user.decorator'
+import {
+   parseAdminPagination,
+   parseOptionalAdminDate,
+   validateAdminDateRange
+} from '../../../../shared/query/admin-query-parser'
 
 @ApiTags('Admin - Ledger')
 @ApiBearerAuth('bearer')
@@ -99,15 +104,17 @@ export class AdminLedgerController {
       @Query('page') page?: string,
       @Query('limit') limit?: string
    ) {
-      const parsedFrom = dateFrom ? new Date(dateFrom) : undefined
-      const parsedTo = dateTo ? new Date(dateTo) : undefined
+      const parsedFrom = parseOptionalAdminDate(dateFrom, 'dateFrom')
+      const parsedTo = parseOptionalAdminDate(dateTo, 'dateTo')
+      validateAdminDateRange(parsedFrom, parsedTo, 'dateFrom', 'dateTo')
+      const pagination = parseAdminPagination(page, limit)
       const command = new ListAllTransactionsCommand(
          type,
          bookingId,
-         parsedFrom && !isNaN(parsedFrom.getTime()) ? parsedFrom : undefined,
-         parsedTo && !isNaN(parsedTo.getTime()) ? parsedTo : undefined,
-         page ? parseInt(page, 10) : 1,
-         limit ? parseInt(limit, 10) : 20
+         parsedFrom,
+         parsedTo,
+         pagination.page,
+         pagination.limit
       )
 
       const result = await this.listAllTransactionsUseCase.execute(command)
@@ -175,15 +182,17 @@ export class AdminLedgerController {
       @Query('page') page?: string,
       @Query('limit') limit?: string
    ) {
-      const parsedFrom = scheduledForFrom ? new Date(scheduledForFrom) : undefined
-      const parsedTo = scheduledForTo ? new Date(scheduledForTo) : undefined
+      const parsedFrom = parseOptionalAdminDate(scheduledForFrom, 'scheduledForFrom')
+      const parsedTo = parseOptionalAdminDate(scheduledForTo, 'scheduledForTo')
+      validateAdminDateRange(parsedFrom, parsedTo, 'scheduledForFrom', 'scheduledForTo')
+      const pagination = parseAdminPagination(page, limit)
       const command = new ListAllPayoutsCommand(
          hostId,
          status,
-         parsedFrom && !isNaN(parsedFrom.getTime()) ? parsedFrom : undefined,
-         parsedTo && !isNaN(parsedTo.getTime()) ? parsedTo : undefined,
-         page ? parseInt(page, 10) : 1,
-         limit ? parseInt(limit, 10) : 20
+         parsedFrom,
+         parsedTo,
+         pagination.page,
+         pagination.limit
       )
 
       const result = await this.listAllPayoutsUseCase.execute(command)
