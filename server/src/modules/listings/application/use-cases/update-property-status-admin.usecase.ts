@@ -25,18 +25,23 @@ export class UpdatePropertyStatusAdminUseCase {
          throw new PropertyNotFoundException()
       }
 
-      // 2. Activation preserves the platform's KYC and license invariants
+      // 2. Activation preserves the platform's KYC and license invariants,
+      // aligned with the host publish flow: KYC is always required, a verified
+      // license only when the property itself requires a local license
       if (command.status === 'active') {
          const hostKycVerified = await this.listingsRepository.checkHostKycVerified(property.hostId)
          if (!hostKycVerified) {
             throw new HostNotVerifiedException()
          }
 
-         const verifiedLicense = await this.listingsRepository.findVerifiedLicenseByPropertyId(
-            property.id
-         )
-         if (!verifiedLicense) {
-            throw new PropertyLicenseRequiredException()
+         if (property.requiresLocalLicense) {
+            const license = await this.listingsRepository.findVerifiedLicenseByPropertyId(
+               property.id
+            )
+            const hasExpired = license?.expiryDate ? license.expiryDate < new Date() : false
+            if (!license || hasExpired) {
+               throw new PropertyLicenseRequiredException()
+            }
          }
       }
 

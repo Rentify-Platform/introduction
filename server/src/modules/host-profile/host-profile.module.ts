@@ -9,17 +9,21 @@ import { RegisterHostUseCase } from './application/use-cases/register-host.useca
 import { SetupHostPayoutUseCase } from './application/use-cases/setup-payout.usecase'
 import { SubmitHostTaxInfoUseCase } from './application/use-cases/submit-tax-info.usecase'
 import { UpdateAboutUseCase } from './application/use-cases/update-about.usecase'
+import { ToggleSuperhostUseCase } from './application/use-cases/toggle-superhost.usecase'
+import { AdminHostsController } from './presentation/controllers/admin-hosts.controller'
+import { PrismaModule } from '../../prisma/prisma.module'
 
 @Module({
-   imports: [HostProfileInfrastructureModule, AuthModule, KycModule],
-   controllers: [HostProfileController],
+   imports: [HostProfileInfrastructureModule, AuthModule, KycModule, PrismaModule],
+   controllers: [HostProfileController, AdminHostsController],
    providers: [
       BecomeHostUseCase,
       GetHostProfileUseCase,
       RegisterHostUseCase,
       SetupHostPayoutUseCase,
       SubmitHostTaxInfoUseCase,
-      UpdateAboutUseCase
+      UpdateAboutUseCase,
+      ToggleSuperhostUseCase
    ],
    exports: [
       BecomeHostUseCase,
@@ -28,6 +32,7 @@ import { UpdateAboutUseCase } from './application/use-cases/update-about.usecase
       SetupHostPayoutUseCase,
       SubmitHostTaxInfoUseCase,
       UpdateAboutUseCase,
+      ToggleSuperhostUseCase,
       HostProfileInfrastructureModule
    ]
 })

@@ -61,7 +61,8 @@ export class UpdateProfileUseCase {
                ? new Date(command.dateOfBirth)
                : null
             : account.dateOfBirth,
-         account.guestKycStatus
+         account.guestKycStatus,
+         account.tokenVersion
       )
 
       if (updatedAccount.firstName.length === 0 || updatedAccount.lastName.length === 0) {

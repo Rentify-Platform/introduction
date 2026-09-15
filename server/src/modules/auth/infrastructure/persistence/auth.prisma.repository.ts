@@ -6,8 +6,7 @@ import {
    FindAllAccountsFilter,
    PaginatedAccounts
 } from '../../domain/repositories/auth.repository'
-import { account_role, account_status } from '@prisma/client'
-import { AccountRole } from '../../domain/account-role.type'
+import { Prisma, account_role, account_status } from '@prisma/client'
 
 @Injectable()
 export class AuthPrismaRepository implements AccountRepository {
@@ -45,7 +44,8 @@ export class AuthPrismaRepository implements AccountRepository {
          record.profiles?.avatar_url || null,
          record.profiles?.bio || null,
          record.profiles?.date_of_birth || null,
-         record.profiles?.guest_kyc_status || 'unverified'
+         record.profiles?.guest_kyc_status || 'unverified',
+         record.token_version
       )
    }
 
@@ -78,7 +78,8 @@ export class AuthPrismaRepository implements AccountRepository {
          record.profiles?.avatar_url || null,
          record.profiles?.bio || null,
          record.profiles?.date_of_birth || null,
-         record.profiles?.guest_kyc_status || 'unverified'
+         record.profiles?.guest_kyc_status || 'unverified',
+         record.token_version
       )
    }
 
@@ -115,6 +116,7 @@ export class AuthPrismaRepository implements AccountRepository {
                password_hash: account.passwordHash,
                role: account.role,
                status: account.status,
+               token_version: account.tokenVersion,
                created_at: account.createdAt,
                updated_at: account.updatedAt
             }
@@ -153,14 +155,14 @@ export class AuthPrismaRepository implements AccountRepository {
       const skip = (page - 1) * limit
 
       // 1. Build where clause from filters
-      const where: Record<string, unknown> = { deleted_at: null }
+      const where: Prisma.accountsWhereInput = { deleted_at: null }
 
       if (filter.role) {
-         where['role'] = filter.role as account_role
+         where.role = filter.role as account_role
       }
 
       if (filter.status) {
-         where['status'] = filter.status as account_status
+         where.status = filter.status as account_status
       }
 
       if (filter.search) {
@@ -175,9 +177,9 @@ export class AuthPrismaRepository implements AccountRepository {
 
       // 2. Run count and data queries in parallel
       const [total, records] = await this.prisma.$transaction([
-         this.prisma.accounts.count({ where: where as any }),
+         this.prisma.accounts.count({ where }),
          this.prisma.accounts.findMany({
-            where: where as any,
+            where,
             include: { profiles: true },
             orderBy: { created_at: 'desc' },
             skip,
@@ -193,7 +195,7 @@ export class AuthPrismaRepository implements AccountRepository {
                record.email,
                record.phone,
                record.password_hash,
-               record.role as AccountRole,
+               record.role,
                record.status,
                record.profiles?.first_name || '',
                record.profiles?.last_name || '',
@@ -202,21 +204,23 @@ export class AuthPrismaRepository implements AccountRepository {
                record.profiles?.avatar_url || null,
                record.profiles?.bio || null,
                record.profiles?.date_of_birth || null,
-               record.profiles?.guest_kyc_status || 'unverified'
+               record.profiles?.guest_kyc_status || 'unverified',
+               record.token_version
             )
       )
 
       return { data, total, page, limit }
    }
 
-   async updateStatus(
-      id: string,
-      status: 'active' | 'suspended' | 'banned'
-   ): Promise<Account> {
+   async updateStatus(id: string, status: 'active' | 'suspended' | 'banned'): Promise<Account> {
       // 1. Update the account status and return the updated record with profile
       const record = await this.prisma.accounts.update({
          where: { id },
-         data: { status: status as account_status, updated_at: new Date() },
+         data: {
+            status,
+            token_version: { increment: 1 },
+            updated_at: new Date()
+         },
          include: { profiles: true }
       })
 
@@ -225,7 +229,7 @@ export class AuthPrismaRepository implements AccountRepository {
          record.email,
          record.phone,
          record.password_hash,
-         record.role as AccountRole,
+         record.role,
          record.status,
          record.profiles?.first_name || '',
          record.profiles?.last_name || '',
@@ -234,7 +238,8 @@ export class AuthPrismaRepository implements AccountRepository {
          record.profiles?.avatar_url || null,
          record.profiles?.bio || null,
          record.profiles?.date_of_birth || null,
-         record.profiles?.guest_kyc_status || 'unverified'
+         record.profiles?.guest_kyc_status || 'unverified',
+         record.token_version
       )
    }
 }

@@ -21,5 +21,10 @@ export const propertiesService = {
    async updateStatus(propertyId: string, status: 'active' | 'paused' | 'archived') {
       const response = await apiClient.patch(`/admin/properties/${propertyId}/status`, { status })
       return response.data?.data
+   },
+
+   async syncMeilisearch() {
+      const response = await apiClient.post('/properties/admin/sync-all')
+      return response.data
    }
 }

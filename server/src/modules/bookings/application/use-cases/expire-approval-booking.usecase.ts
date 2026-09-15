@@ -11,9 +11,7 @@ import {
 import { booking_status, cancelled_by_role } from '@prisma/client'
 
 export class ExpireApprovalBookingCommand {
-   constructor(
-      public readonly bookingId: string
-   ) {}
+   constructor(public readonly bookingId: string) {}
 }
 
 @Injectable()
@@ -34,7 +32,9 @@ export class ExpireApprovalBookingUseCase {
 
       // 2.   Verify the booking status is pending host approval
       if (booking.status !== 'pending_approval') {
-         throw new BadRequestException(`Booking cannot be expired in its current status: ${booking.status}`)
+         throw new BadRequestException(
+            `Booking cannot be expired in its current status: ${booking.status}`
+         )
       }
 
       // 3.   Retrieve associated payment
@@ -84,8 +84,10 @@ export class ExpireApprovalBookingUseCase {
             data: {
                booking_id: booking.id,
                cancelled_by_account_id: null,
-               cancelled_by_role: 'system' as cancelled_by_role,
-               days_before_checkin: Math.ceil((booking.checkIn.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+               cancelled_by_role: 'system',
+               days_before_checkin: Math.ceil(
+                  (booking.checkIn.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+               ),
                applied_policy_code: booking.cancellationPolicyCode,
                applied_tier_id: null,
                guest_refund_cents: booking.totalPriceCents,
@@ -123,7 +125,7 @@ export class ExpireApprovalBookingUseCase {
          await tx.bookings.update({
             where: { id: booking.id },
             data: {
-               status: newStatus as booking_status,
+               status: newStatus,
                cancelled_at: expiredBooking.cancelledAt,
                updated_at: expiredBooking.updatedAt
             }

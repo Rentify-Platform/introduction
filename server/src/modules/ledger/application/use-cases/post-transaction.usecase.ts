@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { LedgerRepository } from '../../domain/repositories/ledger.repository'
 import { LedgerTransaction, LedgerTxnType } from '../../domain/entities/ledger-transaction.entity'
 import { LedgerEntry } from '../../domain/entities/ledger-entry.entity'
@@ -32,10 +33,14 @@ export class PostTransactionCommand {
 export class PostTransactionUseCase {
    constructor(private readonly ledgerRepository: LedgerRepository) {}
 
-   async execute(command: PostTransactionCommand): Promise<LedgerTransaction> {
+   async execute(
+      command: PostTransactionCommand,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerTransaction> {
       // 1.   Check idempotency key to prevent duplicate transaction posting
       const existingTxn = await this.ledgerRepository.findTransactionByIdempotencyKey(
-         command.idempotencyKey
+         command.idempotencyKey,
+         tx
       )
       if (existingTxn) {
          return existingTxn
@@ -78,7 +83,8 @@ export class PostTransactionUseCase {
                entry.ownerType,
                entry.ownerAccountId,
                entry.accountSubtype,
-               entry.currency
+               entry.currency,
+               tx
             )
             accountId = account.id
          }
@@ -105,6 +111,6 @@ export class PostTransactionUseCase {
          entries: entriesToCreate
       })
 
-      return this.ledgerRepository.saveTransaction(transaction)
+      return this.ledgerRepository.saveTransaction(transaction, tx)
    }
 }

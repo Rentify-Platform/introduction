@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { BookingsRepository } from '../../domain/repositories/bookings.repository'
 import { ListingsRepository } from '../../../listings/domain/repositories/listings.repository'
 import { Booking } from '../../domain/entities/booking.entity'
@@ -29,6 +29,14 @@ export class GetBookingDetailsUseCase {
    async execute(command: GetBookingDetailsCommand): Promise<GetBookingDetailsResult> {
       const booking = await this.bookingsRepository.findById(command.bookingId)
       if (!booking) {
+         throw new NotFoundException('Booking not found')
+      }
+
+      const isAdmin = command.userRole === 'admin'
+      const isGuest = command.userRole === 'guest' && booking.guestId === command.userId
+      const isHost = command.userRole === 'host' && booking.hostId === command.userId
+      if (!isAdmin && !isGuest && !isHost) {
+         // Return 404 so callers cannot use this endpoint to discover another user's bookings.
          throw new NotFoundException('Booking not found')
       }
 

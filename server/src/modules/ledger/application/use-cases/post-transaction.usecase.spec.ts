@@ -38,7 +38,7 @@ describe('PostTransactionUseCase', () => {
       }).compile()
 
       useCase = module.get<PostTransactionUseCase>(PostTransactionUseCase)
-      repository = module.get(LedgerRepository) as jest.Mocked<LedgerRepository>
+      repository = module.get(LedgerRepository)
    })
 
    it('should successfully post a balanced transaction and return it', async () => {

@@ -59,7 +59,50 @@ export class ConfirmSepayPaymentUseCase {
          }
       }
 
-      // 4.   Compare transfer amount with payment amount
+      // A failed payment has already been reconciled. Treat retries as idempotent.
+      if (payment.status === 'failed') {
+         return {
+            success: true,
+            message: `Payment ${intentCode} was already rejected and requires reconciliation.`
+         }
+      }
+
+      // 4.   Retrieve the booking early to validate it exists and avoid orphans
+      const booking = await this.bookingsRepository.findById(payment.bookingId)
+      if (!booking) {
+         throw new NotFoundException('Associated booking not found')
+      }
+
+      // A booking that is already terminal must never be resurrected by a late transfer.
+      if (
+         booking.status === 'expired' ||
+         booking.status === 'cancelled_by_guest' ||
+         booking.status === 'cancelled_by_host' ||
+         booking.status === 'cancelled_by_admin'
+      ) {
+         const updatedPayment = new Payment(
+            payment.id,
+            payment.bookingId,
+            payment.paymentMethodId,
+            payment.ledgerTransactionId,
+            'failed',
+            payment.amountCents,
+            payment.currency,
+            payment.provider,
+            payment.providerIntentId,
+            `Payment received after booking was ${booking.status}. Manual refund or reconciliation required.`,
+            payment.createdAt,
+            new Date()
+         )
+         await this.bookingsRepository.savePayment(updatedPayment)
+
+         return {
+            success: true,
+            message: `Payment ${intentCode} was rejected because booking ${booking.id} is ${booking.status}. Manual reconciliation required.`
+         }
+      }
+
+      // 5.   Compare transfer amount with payment amount
       // transferAmount is in VND. payment.amountCents is stored in cents (VND * 100)
       const expectedAmountCents = payment.amountCents
       const receivedAmountCents = BigInt(Math.round(transferAmount * 100))
@@ -82,46 +125,6 @@ export class ConfirmSepayPaymentUseCase {
          )
          await this.bookingsRepository.savePayment(updatedPayment)
          throw new BadRequestException('Received amount is less than expected amount')
-      }
-
-      // 5.   Retrieve the booking early to validate it exists and avoid orphans
-      const booking = await this.bookingsRepository.findById(payment.bookingId)
-      if (!booking) {
-         throw new NotFoundException('Associated booking not found')
-      }
-
-      // Check if the booking was already expired or cancelled
-      if (booking.status === 'expired' || booking.status.startsWith('cancelled')) {
-         const isOverlapping = await this.bookingsRepository.checkOverlappingBooking(
-            booking.propertyId,
-            booking.checkIn,
-            booking.checkOut
-         )
-
-         if (isOverlapping) {
-            // Dates are already taken by another booking! Mark payment as failed
-            const updatedPayment = new Payment(
-               payment.id,
-               payment.bookingId,
-               payment.paymentMethodId,
-               payment.ledgerTransactionId,
-               'failed',
-               payment.amountCents,
-               payment.currency,
-               payment.provider,
-               payment.providerIntentId,
-               `Payment received after booking was ${booking.status}, and dates are no longer available. Manual refund required.`,
-               payment.createdAt,
-               new Date()
-            )
-            await this.bookingsRepository.savePayment(updatedPayment)
-
-            throw new BadRequestException(
-               `Payment received for an expired/cancelled booking (${booking.status}) but dates are no longer available.`
-            )
-         }
-
-         // If dates are still free, we gracefully allow confirming the booking.
       }
 
       // 6.   Post transaction to Ledger using payment ID as idempotency key

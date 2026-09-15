@@ -13,7 +13,7 @@ import {
    PostTransactionCommand,
    PostTransactionEntryCommand
 } from '../../../ledger/application/use-cases/post-transaction.usecase'
-import { booking_status, cancelled_by_role } from '@prisma/client'
+
 import { BookedDatesCachePort } from '../ports/booked-dates-cache.port'
 
 export class CancelBookingCommand {
@@ -44,7 +44,11 @@ export class CancelBookingUseCase {
       }
 
       // 2.   Check if booking can be cancelled (must be pending, pending_approval, or confirmed)
-      if (booking.status !== 'pending' && booking.status !== 'pending_approval' && booking.status !== 'confirmed') {
+      if (
+         booking.status !== 'pending' &&
+         booking.status !== 'pending_approval' &&
+         booking.status !== 'confirmed'
+      ) {
          throw new BadRequestException(
             `Booking cannot be cancelled in its current status: ${booking.status}`
          )
@@ -56,7 +60,7 @@ export class CancelBookingUseCase {
 
       if (command.role === 'admin') {
          determinedRole = 'admin'
-         newStatus = 'cancelled_by_host' // or map to default admin cancel status
+         newStatus = 'cancelled_by_admin'
       } else if (booking.guestId === command.userId) {
          determinedRole = 'guest'
          newStatus = 'cancelled_by_guest'
@@ -124,16 +128,22 @@ export class CancelBookingUseCase {
                const refundCleaningCents = matchedTier.refund_cleaning_fee
                   ? booking.cleaningFeeCents
                   : 0n
-               const refundServiceCents = matchedTier.refund_service_fee ? booking.serviceFeeCents : 0n
+               const refundServiceCents = matchedTier.refund_service_fee
+                  ? booking.serviceFeeCents
+                  : 0n
                const refundTaxesCents = BigInt(
-                  Math.round(Number(booking.taxesCents) * (Number(matchedTier.refund_taxes_pct) / 100))
+                  Math.round(
+                     Number(booking.taxesCents) * (Number(matchedTier.refund_taxes_pct) / 100)
+                  )
                )
 
                guestRefundCents =
                   refundNightlyCents + refundCleaningCents + refundServiceCents + refundTaxesCents
 
                // 9.   Calculate host payout breakdown parts
-               const payoutNightlyCents = BigInt(Math.round(Number(nightlyTotalCents) * hostPayoutPct))
+               const payoutNightlyCents = BigInt(
+                  Math.round(Number(nightlyTotalCents) * hostPayoutPct)
+               )
                const payoutCleaningCents = matchedTier.refund_cleaning_fee
                   ? 0n
                   : booking.cleaningFeeCents
@@ -235,7 +245,7 @@ export class CancelBookingUseCase {
             data: {
                booking_id: booking.id,
                cancelled_by_account_id: command.userId,
-               cancelled_by_role: determinedRole as cancelled_by_role,
+               cancelled_by_role: determinedRole,
                days_before_checkin: hasPayment
                   ? Math.ceil((booking.checkIn.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
                   : 0,
@@ -276,7 +286,7 @@ export class CancelBookingUseCase {
          await tx.bookings.update({
             where: { id: booking.id },
             data: {
-               status: newStatus as booking_status,
+               status: newStatus,
                cancelled_at: updatedBooking.cancelledAt,
                updated_at: updatedBooking.updatedAt
             }

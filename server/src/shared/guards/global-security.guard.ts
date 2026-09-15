@@ -6,16 +6,27 @@ import {
    UnauthorizedException
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
-import { TokenServicePort } from '../../modules/auth/application/ports/token-service.port'
+import {
+   TokenPayload,
+   TokenServicePort
+} from '../../modules/auth/application/ports/token-service.port'
+import { AccountRepository } from '../../modules/auth/domain/repositories/auth.repository'
 import { AccountRole } from '../../modules/auth/domain/account-role.type'
 import { ROLES_KEY } from '../decorators/authorize.decorator'
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator'
+
+type SecurityRequest = {
+   url: string
+   headers: { authorization?: string }
+   user?: { id: string; email: string; role: AccountRole }
+}
 
 @Injectable()
 export class GlobalSecurityGuard implements CanActivate {
    constructor(
       private readonly reflector: Reflector,
-      private readonly tokenService: TokenServicePort
+      private readonly tokenService: TokenServicePort,
+      private readonly accountRepository: AccountRepository
    ) {}
 
    async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -28,7 +39,7 @@ export class GlobalSecurityGuard implements CanActivate {
          return true
       }
 
-      const request = context.switchToHttp().getRequest()
+      const request = context.switchToHttp().getRequest<SecurityRequest>()
       const path = request.url
 
       // 2. Resolve metadata-based roles
@@ -49,10 +60,17 @@ export class GlobalSecurityGuard implements CanActivate {
          if (token) {
             try {
                const payload = await this.tokenService.verifyToken(token)
-               request.user = {
-                  id: payload.sub,
-                  email: payload.email,
-                  role: payload.role as AccountRole
+               const account = await this.accountRepository.findById(payload.sub)
+               if (
+                  account &&
+                  account.status === 'active' &&
+                  account.tokenVersion === payload.tokenVersion
+               ) {
+                  request.user = {
+                     id: payload.sub,
+                     email: payload.email,
+                     role: account.role
+                  }
                }
             } catch {
                // Ignore token parsing error for public endpoints
@@ -67,13 +85,22 @@ export class GlobalSecurityGuard implements CanActivate {
          throw new UnauthorizedException('Access token is missing')
       }
 
-      let userPayload
+      let userPayload: TokenPayload
       try {
          userPayload = await this.tokenService.verifyToken(token)
+         const account = await this.accountRepository.findById(userPayload.sub)
+         if (
+            !account ||
+            account.status !== 'active' ||
+            account.tokenVersion !== userPayload.tokenVersion
+         ) {
+            throw new UnauthorizedException('Account session is no longer valid')
+         }
+
          request.user = {
             id: userPayload.sub,
             email: userPayload.email,
-            role: userPayload.role as AccountRole
+            role: account.role
          }
       } catch {
          throw new UnauthorizedException('Invalid or expired access token')
@@ -97,7 +124,7 @@ export class GlobalSecurityGuard implements CanActivate {
       return true
    }
 
-   private extractTokenFromHeader(request: any): string | null {
+   private extractTokenFromHeader(request: { headers: { authorization?: string } }): string | null {
       const authHeader = request.headers.authorization
       if (!authHeader) return null
       const [type, token] = authHeader.split(' ')

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuthStore } from '@/features/auth/stores/auth-store'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080'
 
@@ -26,17 +27,23 @@ apiClient.interceptors.request.use(
    }
 )
 
-// Response interceptor to handle token expiration
+// Response interceptor to handle token expiration and revoked sessions
+// (account suspended/banned bumps token_version -> old JWT receives 401)
 apiClient.interceptors.response.use(
    (response) => response,
    (error) => {
       if (error.response && error.response.status === 401) {
          if (typeof window !== 'undefined') {
             localStorage.removeItem('rentify_token')
-            // Optionally redirect to login or reload page
-            // window.location.href = '/'
          }
+         useAuthStore.getState().clearAuth()
       }
+
+      const backendMessage = error.response?.data?.message
+      if (backendMessage) {
+         error.message = Array.isArray(backendMessage) ? backendMessage.join(', ') : backendMessage
+      }
+
       return Promise.reject(error)
    }
 )

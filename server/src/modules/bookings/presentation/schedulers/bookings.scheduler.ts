@@ -4,7 +4,10 @@ import { PrismaService } from '../../../../prisma/prisma.service'
 import { booking_status } from '@prisma/client'
 import { PAYMENT_TIMEOUT_SECONDS } from '../../bookings.constants'
 import { BookedDatesCachePort } from '../../application/ports/booked-dates-cache.port'
-import { ExpireApprovalBookingUseCase, ExpireApprovalBookingCommand } from '../../application/use-cases/expire-approval-booking.usecase'
+import {
+   ExpireApprovalBookingUseCase,
+   ExpireApprovalBookingCommand
+} from '../../application/use-cases/expire-approval-booking.usecase'
 
 @Injectable()
 export class BookingsScheduler {
@@ -131,7 +134,9 @@ export class BookingsScheduler {
          })
 
          if (timedOutBookings.length > 0) {
-            this.logger.log(`Found ${timedOutBookings.length} booking request(s) awaiting approval that have timed out.`)
+            this.logger.log(
+               `Found ${timedOutBookings.length} booking request(s) awaiting approval that have timed out.`
+            )
 
             // 3.   Expire each booking request one by one using the usecase
             for (const b of timedOutBookings) {

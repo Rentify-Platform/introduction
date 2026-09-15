@@ -27,7 +27,9 @@ export class SearchController {
    }
 
    @Get('search')
-   @ApiOperation({ summary: 'Search published listings by query, city, price range, geo radius, amenities' })
+   @ApiOperation({
+      summary: 'Search published listings by query, city, price range, geo radius, amenities'
+   })
    async search(@Query() request: SearchListingsRequest) {
       const query = new SearchListingsQuery(
          request.query,

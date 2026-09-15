@@ -28,6 +28,7 @@ export interface Booking {
       | 'confirmed'
       | 'cancelled_by_guest'
       | 'cancelled_by_host'
+      | 'cancelled_by_admin'
       | 'completed'
       | 'expired'
    checkIn: string

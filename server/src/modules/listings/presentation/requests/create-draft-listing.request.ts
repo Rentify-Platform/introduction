@@ -33,7 +33,10 @@ export class CreateDraftListingRequest {
    @Length(3, 100)
    title: string
 
-   @ApiPropertyOptional({ description: 'Full property description', example: 'Spacious apartment near the beach.' })
+   @ApiPropertyOptional({
+      description: 'Full property description',
+      example: 'Spacious apartment near the beach.'
+   })
    @IsOptional()
    @IsString()
    description?: string
@@ -130,27 +133,47 @@ export class CreateDraftListingRequest {
    @Min(1)
    maximumNights?: number
 
-   @ApiPropertyOptional({ description: 'Check-in time (HH:mm format)', example: '14:00', default: '15:00' })
+   @ApiPropertyOptional({
+      description: 'Check-in time (HH:mm format)',
+      example: '14:00',
+      default: '15:00'
+   })
    @IsOptional()
    @IsString()
    checkInTime?: string
 
-   @ApiPropertyOptional({ description: 'Check-out time (HH:mm format)', example: '12:00', default: '11:00' })
+   @ApiPropertyOptional({
+      description: 'Check-out time (HH:mm format)',
+      example: '12:00',
+      default: '11:00'
+   })
    @IsOptional()
    @IsString()
    checkOutTime?: string
 
-   @ApiPropertyOptional({ description: 'Allows instant booking without host approval', example: false, default: false })
+   @ApiPropertyOptional({
+      description: 'Allows instant booking without host approval',
+      example: false,
+      default: false
+   })
    @IsOptional()
    @IsBoolean()
    instantBook?: boolean
 
-   @ApiPropertyOptional({ description: 'Cancellation policy code', example: 'moderate', default: 'moderate' })
+   @ApiPropertyOptional({
+      description: 'Cancellation policy code',
+      example: 'moderate',
+      default: 'moderate'
+   })
    @IsOptional()
    @IsString()
    cancellationPolicyCode?: string
 
-   @ApiPropertyOptional({ description: 'Indicates if local government rental license is required', example: false, default: false })
+   @ApiPropertyOptional({
+      description: 'Indicates if local government rental license is required',
+      example: false,
+      default: false
+   })
    @IsOptional()
    @IsBoolean()
    requiresLocalLicense?: boolean
@@ -161,7 +184,10 @@ export class CreateDraftListingRequest {
    @IsNumber({}, { each: true })
    amenityIds?: number[]
 
-   @ApiPropertyOptional({ description: 'Array of property photo URLs', example: ['https://example.com/photo1.jpg'] })
+   @ApiPropertyOptional({
+      description: 'Array of property photo URLs',
+      example: ['https://example.com/photo1.jpg']
+   })
    @IsOptional()
    @IsArray()
    @IsString({ each: true })

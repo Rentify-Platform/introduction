@@ -8,6 +8,7 @@ const pool = new Pool({
 
 const HOST_ID = 'd0c2980e-3995-4fee-9b0e-bbadc3651c06'
 const GUEST_ID = '7c123f66-a264-4ec8-b010-09350fbcc27c'
+const ADMIN_ID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
 
 const PROPERTIES = [
    {
@@ -155,10 +156,11 @@ async function main() {
 
       // Ensure accounts exist
       await client.query(`
-         INSERT INTO accounts (id, email, role, status, created_at, updated_at)
+         INSERT INTO accounts (id, email, role, status, password_hash, created_at, updated_at)
          VALUES 
-            ('${HOST_ID}', 'host@rentify.com', 'host', 'active', NOW(), NOW()),
-            ('${GUEST_ID}', 'guest@rentify.com', 'guest', 'active', NOW(), NOW())
+            ('${HOST_ID}', 'host@rentify.com', 'host', 'active', '$2b$10$5RxdyZnVxdYusw2zUs8EGe2tUXiqKn777SsC27gvFc.QxsBEoieq.', NOW(), NOW()),
+            ('${GUEST_ID}', 'guest@rentify.com', 'guest', 'active', '$2b$10$5RxdyZnVxdYusw2zUs8EGe2tUXiqKn777SsC27gvFc.QxsBEoieq.', NOW(), NOW()),
+            ('${ADMIN_ID}', 'admin@rentify.com', 'admin', 'active', '$2b$10$jNM9pRCj5Dl15Fpsjfd6Febeq7CsqD.a40d5UtQfIP/ebhITipN6u', NOW(), NOW())
          ON CONFLICT DO NOTHING
       `)
 
@@ -167,12 +169,31 @@ async function main() {
          INSERT INTO profiles (account_id, first_name, last_name, avatar_url, bio, created_at, updated_at)
          VALUES 
             ('${HOST_ID}', 'Wayan', 'Suardana', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80', 'Local host passionate about eco-friendly bamboo architecture.', NOW(), NOW()),
-            ('${GUEST_ID}', 'Sarah', 'Jenkins', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80', 'Avid traveler and architectural photographer.', NOW(), NOW())
+            ('${GUEST_ID}', 'Sarah', 'Jenkins', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80', 'Avid traveler and architectural photographer.', NOW(), NOW()),
+            ('${ADMIN_ID}', 'System', 'Admin', null, 'Platform administrator', NOW(), NOW())
+         ON CONFLICT (account_id) DO NOTHING
+      `)
+
+      // Ensure host_profiles exist (Requires KYC verification for listings to be active)
+      await client.query(`
+         INSERT INTO host_profiles (account_id, is_superhost, kyc_status, created_at, updated_at)
+         VALUES 
+            ('${HOST_ID}', true, 'verified', NOW(), NOW())
          ON CONFLICT (account_id) DO NOTHING
       `)
 
       // Cleanup
       console.log('Clearing old transaction logs, reviews, bookings, and listings...')
+      await client.query("SET session_replication_role = 'replica'")
+      await client.query('DELETE FROM kyc_documents')
+      await client.query('DELETE FROM kyc_checks')
+      await client.query('DELETE FROM cancellations')
+      await client.query('DELETE FROM host_penalties')
+      await client.query('DELETE FROM payouts')
+      await client.query('DELETE FROM ledger_entries')
+      await client.query('DELETE FROM ledger_transactions')
+      await client.query('DELETE FROM ledger_balances')
+      await client.query('DELETE FROM ledger_accounts')
       await client.query('DELETE FROM reviews')
       await client.query('DELETE FROM bookings')
       await client.query('DELETE FROM property_calendar')
@@ -181,6 +202,29 @@ async function main() {
       await client.query('DELETE FROM property_licenses')
       await client.query('DELETE FROM wishlist_items')
       await client.query('DELETE FROM properties')
+      await client.query("SET session_replication_role = 'origin'")
+
+       // Seed property_types lookup table
+       await client.query(`
+          INSERT INTO property_types (code, label) VALUES
+             ('entire_home', 'Entire Home'),
+             ('apartment', 'Apartment'),
+             ('guesthouse', 'Guesthouse'),
+             ('cabin', 'Cabin'),
+             ('villa', 'Villa')
+          ON CONFLICT (code) DO NOTHING
+       `)
+
+       // Seed amenities lookup table
+       await client.query(`
+          INSERT INTO amenities (code, label, category) VALUES
+             ('wifi', 'Wifi', 'basic'),
+             ('kitchen', 'Kitchen', 'basic'),
+             ('air_conditioning', 'Air Conditioning', 'comfort'),
+             ('pool', 'Swimming Pool', 'luxury'),
+             ('parking', 'Free Parking', 'basic')
+          ON CONFLICT (code) DO NOTHING
+       `)
 
       // Fetch lookup tables
       const { rows: types } = await client.query('SELECT id, code FROM property_types')

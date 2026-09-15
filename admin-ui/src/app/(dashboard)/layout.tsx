@@ -8,6 +8,8 @@ import {
    Users,
    Home as HomeIcon,
    Fingerprint,
+   Receipt,
+   BookOpen,
    LogOut,
    Loader2,
    ShieldAlert,
@@ -23,7 +25,10 @@ const NAV_ITEMS = [
    { label: 'Overview', href: '/', icon: LayoutDashboard },
    { label: 'Users', href: '/users', icon: Users },
    { label: 'Properties', href: '/properties', icon: HomeIcon },
-   { label: 'KYC Queue', href: '/kyc', icon: Fingerprint }
+   { label: 'KYC Queue', href: '/kyc', icon: Fingerprint },
+   { label: 'Bookings', href: '/bookings', icon: BookOpen },
+   { label: 'Penalties', href: '/penalties', icon: ShieldAlert },
+   { label: 'Ledger', href: '/ledger', icon: Receipt }
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

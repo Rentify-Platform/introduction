@@ -3,7 +3,10 @@ import { IsArray, IsDateString, IsNumber, IsOptional, IsString, Min } from 'clas
 import { Transform } from 'class-transformer'
 
 export class SearchListingsRequest {
-   @ApiPropertyOptional({ description: 'Text search query for title, description or location', example: 'beach villa' })
+   @ApiPropertyOptional({
+      description: 'Text search query for title, description or location',
+      example: 'beach villa'
+   })
    @IsOptional()
    @IsString()
    query?: string
@@ -23,21 +26,33 @@ export class SearchListingsRequest {
    @IsDateString()
    checkOut?: string
 
-   @ApiPropertyOptional({ description: 'Minimum number of guests required', example: 2, minimum: 1 })
+   @ApiPropertyOptional({
+      description: 'Minimum number of guests required',
+      example: 2,
+      minimum: 1
+   })
    @IsOptional()
    @Transform(({ value }) => Number(value))
    @IsNumber()
    @Min(1)
    guests?: number
 
-   @ApiPropertyOptional({ description: 'Minimum base price per night in cents', example: 50000000, minimum: 0 })
+   @ApiPropertyOptional({
+      description: 'Minimum base price per night in cents',
+      example: 50000000,
+      minimum: 0
+   })
    @IsOptional()
    @Transform(({ value }) => Number(value))
    @IsNumber()
    @Min(0)
    minPrice?: number
 
-   @ApiPropertyOptional({ description: 'Maximum base price per night in cents', example: 500000000, minimum: 0 })
+   @ApiPropertyOptional({
+      description: 'Maximum base price per night in cents',
+      example: 500000000,
+      minimum: 0
+   })
    @IsOptional()
    @Transform(({ value }) => Number(value))
    @IsNumber()
@@ -73,7 +88,10 @@ export class SearchListingsRequest {
    @IsString()
    propertyType?: string
 
-   @ApiPropertyOptional({ description: 'List or comma-separated amenity names', example: ['wifi', 'pool'] })
+   @ApiPropertyOptional({
+      description: 'List or comma-separated amenity names',
+      example: ['wifi', 'pool']
+   })
    @IsOptional()
    @Transform(({ value }) => {
       if (Array.isArray(value)) return value
@@ -98,7 +116,10 @@ export class SearchListingsRequest {
    @Min(1)
    limit?: number = 20
 
-   @ApiPropertyOptional({ description: 'Sort criteria (e.g. price:asc, rating:desc)', example: 'price:asc' })
+   @ApiPropertyOptional({
+      description: 'Sort criteria (e.g. price:asc, rating:desc)',
+      example: 'price:asc'
+   })
    @IsOptional()
    @IsString()
    sortBy?: string

@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing'
 import { ROLES_KEY } from '../../../../shared/decorators/authorize.decorator'
 import { GlobalSecurityGuard } from '../../../../shared/guards/global-security.guard'
 import { TokenServicePort } from '../../../auth/application/ports/token-service.port'
+import { AccountRepository } from '../../../auth/domain/repositories/auth.repository'
 import { LedgerBalance } from '../../domain/entities/ledger-balance.entity'
 import { AdminLedgerController } from './admin-ledger.controller'
 
@@ -15,6 +16,7 @@ const getPlatformBalanceHandler = Object.getOwnPropertyDescriptor(
 describe('AdminLedgerController', () => {
    const executeGetBalance = jest.fn()
    const getBalanceUseCase = { execute: executeGetBalance }
+   const stubUseCase = { execute: jest.fn() }
 
    beforeEach(() => jest.clearAllMocks())
 
@@ -22,9 +24,20 @@ describe('AdminLedgerController', () => {
       executeGetBalance.mockResolvedValue(
          new LedgerBalance('platform-account', 125000n, new Date('2026-08-20T00:00:00.000Z'))
       )
-      const controller = new AdminLedgerController(getBalanceUseCase as never)
+      const controller = new AdminLedgerController(
+         getBalanceUseCase as never,
+         stubUseCase as never,
+         stubUseCase as never,
+         stubUseCase as never,
+         stubUseCase as never,
+         stubUseCase as never
+      )
 
-      const result = await controller.getPlatformBalance()
+      const result = await controller.getPlatformBalance({
+         id: 'admin-1',
+         email: 'admin@test.dev',
+         role: 'admin'
+      })
 
       expect(executeGetBalance).toHaveBeenCalledWith(
          expect.objectContaining({
@@ -32,7 +45,8 @@ describe('AdminLedgerController', () => {
             ownerType: 'platform',
             ownerAccountId: null,
             accountSubtype: 'revenue',
-            currency: 'VND'
+            currency: 'VND',
+            actor: expect.objectContaining({ accountId: 'admin-1', role: 'admin' })
          })
       )
       expect(result.data).toEqual(
@@ -58,15 +72,28 @@ describe('Admin ledger authorization', () => {
    })
 
    async function buildGuard(role: 'admin' | 'guest' | 'host') {
-      const verifyToken = jest
-         .fn()
-         .mockResolvedValue({ sub: 'account-id', email: 'user@test.dev', role })
+      const verifyToken = jest.fn().mockResolvedValue({
+         sub: 'account-id',
+         email: 'user@test.dev',
+         role,
+         tokenVersion: 0
+      })
       const tokenService = { verifyToken }
       const module = await Test.createTestingModule({
          providers: [
             GlobalSecurityGuard,
             Reflector,
-            { provide: TokenServicePort, useValue: tokenService }
+            { provide: TokenServicePort, useValue: tokenService },
+            {
+               provide: AccountRepository,
+               useValue: {
+                  findById: jest.fn().mockResolvedValue({
+                     role,
+                     status: 'active',
+                     tokenVersion: 0
+                  })
+               }
+            }
          ]
       }).compile()
       return module.get(GlobalSecurityGuard)

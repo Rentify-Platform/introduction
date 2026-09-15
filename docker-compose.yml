@@ -1,6 +1,6 @@
 services:
    postgres:
-      image: postgres:18.3-alpine
+      image: postgres:16-alpine
       container_name: rentify-postgres
       restart: unless-stopped
       environment:
@@ -8,9 +8,9 @@ services:
          POSTGRES_USER: rentify
          POSTGRES_PASSWORD: rentify
       ports:
-         - '54332:5432'
+         - '5432:5432'
       volumes:
-         - rentify_pg18_data:/var/lib/postgresql
+         - rentify_pg_data:/var/lib/postgresql
          - ./docker/postgres/init-citext.sql:/docker-entrypoint-initdb.d/init-citext.sql:ro
       healthcheck:
          test: ['CMD-SHELL', 'pg_isready -U rentify -d rentify']
@@ -83,7 +83,6 @@ services:
          - server
 
 volumes:
-   rentify_pg18_data:
    rentify_pg_data:
    rentify_redis_data:
    rentify_meili_data:

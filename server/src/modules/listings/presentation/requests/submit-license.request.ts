@@ -7,12 +7,18 @@ export class SubmitLicenseRequest {
    @IsString()
    licenseNumber: string
 
-   @ApiProperty({ description: 'Issuing government authority', example: 'Da Nang Department of Tourism' })
+   @ApiProperty({
+      description: 'Issuing government authority',
+      example: 'Da Nang Department of Tourism'
+   })
    @IsNotEmpty()
    @IsString()
    issuingAuthority: string
 
-   @ApiProperty({ description: 'License document file URL', example: 'https://example.com/license.pdf' })
+   @ApiProperty({
+      description: 'License document file URL',
+      example: 'https://example.com/license.pdf'
+   })
    @IsNotEmpty()
    @IsString()
    fileUrl: string

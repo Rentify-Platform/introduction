@@ -2,10 +2,19 @@ import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../../prisma/prisma.service'
 import { LedgerAccount, LedgerOwnerType } from '../../domain/entities/ledger-account.entity'
 import { LedgerBalance } from '../../domain/entities/ledger-balance.entity'
-import { LedgerTransaction, LedgerTxnType } from '../../domain/entities/ledger-transaction.entity'
+import { LedgerTransaction } from '../../domain/entities/ledger-transaction.entity'
 import { LedgerEntry } from '../../domain/entities/ledger-entry.entity'
-import { LedgerRepository } from '../../domain/repositories/ledger.repository'
-import { ledger_owner_type, ledger_txn_type } from '@prisma/client'
+import { BalanceWithAccount } from '../../domain/entities/balance-with-account.entity'
+import { Payout } from '../../domain/entities/payout.entity'
+import { PlatformConfig } from '../../domain/entities/platform-config.entity'
+import {
+   FindAllPayoutsFilter,
+   FindAllTransactionsFilter,
+   LedgerRepository,
+   PaginatedPayouts,
+   PaginatedTransactions
+} from '../../domain/repositories/ledger.repository'
+import { ledger_txn_type, payout_status, Prisma } from '@prisma/client'
 
 @Injectable()
 export class LedgerPrismaRepository implements LedgerRepository {
@@ -22,6 +31,32 @@ export class LedgerPrismaRepository implements LedgerRepository {
       )
    }
 
+   private mapToTransactionEntity(record: any): LedgerTransaction {
+      const entries = (record.ledger_entries || []).map(
+         (e: any) =>
+            new LedgerEntry(
+               e.id,
+               e.transaction_id,
+               e.ledger_account_id,
+               e.amount_cents,
+               e.currency,
+               e.created_at
+            )
+      )
+
+      return new LedgerTransaction(
+         record.id,
+         record.idempotency_key,
+         record.type,
+         record.booking_id,
+         record.description,
+         record.metadata,
+         record.created_by,
+         record.created_at,
+         entries
+      )
+   }
+
    async findAccountById(id: string): Promise<LedgerAccount | null> {
       const record = await this.prisma.ledger_accounts.findUnique({
          where: { id }
@@ -34,14 +69,16 @@ export class LedgerPrismaRepository implements LedgerRepository {
       ownerType: LedgerOwnerType,
       ownerAccountId: string | null,
       accountSubtype: string,
-      currency: string
+      currency: string,
+      tx?: Prisma.TransactionClient
    ): Promise<LedgerAccount | null> {
+      const db = tx ?? this.prisma
       const normalizedSubtype = accountSubtype.toLowerCase()
       const normalizedCurrency = currency.toUpperCase()
 
-      const record = await this.prisma.ledger_accounts.findFirst({
+      const record = await db.ledger_accounts.findFirst({
          where: {
-            owner_type: ownerType as ledger_owner_type,
+            owner_type: ownerType,
             owner_account_id: ownerAccountId,
             account_subtype: normalizedSubtype,
             currency: normalizedCurrency
@@ -52,18 +89,22 @@ export class LedgerPrismaRepository implements LedgerRepository {
       return this.mapToAccountEntity(record)
    }
 
-   async saveAccount(account: LedgerAccount): Promise<LedgerAccount> {
-      const record = await this.prisma.ledger_accounts.upsert({
+   async saveAccount(
+      account: LedgerAccount,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerAccount> {
+      const db = tx ?? this.prisma
+      const record = await db.ledger_accounts.upsert({
          where: { id: account.id },
          update: {
-            owner_type: account.ownerType as ledger_owner_type,
+            owner_type: account.ownerType,
             owner_account_id: account.ownerAccountId,
             account_subtype: account.accountSubtype,
             currency: account.currency
          },
          create: {
             id: account.id,
-            owner_type: account.ownerType as ledger_owner_type,
+            owner_type: account.ownerType,
             owner_account_id: account.ownerAccountId,
             account_subtype: account.accountSubtype,
             currency: account.currency,
@@ -77,9 +118,16 @@ export class LedgerPrismaRepository implements LedgerRepository {
       ownerType: LedgerOwnerType,
       ownerAccountId: string | null,
       accountSubtype: string,
-      currency: string
+      currency: string,
+      tx?: Prisma.TransactionClient
    ): Promise<LedgerAccount> {
-      const existing = await this.findAccount(ownerType, ownerAccountId, accountSubtype, currency)
+      const existing = await this.findAccount(
+         ownerType,
+         ownerAccountId,
+         accountSubtype,
+         currency,
+         tx
+      )
       if (existing) {
          return existing
       }
@@ -92,7 +140,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
       })
 
       try {
-         return await this.saveAccount(newAccount)
+         return await this.saveAccount(newAccount, tx)
       } catch (err: any) {
          // Handle unique key violation (P2002) for parallel requests
          if (err.code === 'P2002') {
@@ -100,7 +148,8 @@ export class LedgerPrismaRepository implements LedgerRepository {
                ownerType,
                ownerAccountId,
                accountSubtype,
-               currency
+               currency,
+               tx
             )
             if (found) {
                return found
@@ -136,71 +185,34 @@ export class LedgerPrismaRepository implements LedgerRepository {
       })
       if (!record) return null
 
-      const entries = record.ledger_entries.map(
-         (e) =>
-            new LedgerEntry(
-               e.id,
-               e.transaction_id,
-               e.ledger_account_id,
-               e.amount_cents,
-               e.currency,
-               e.created_at
-            )
-      )
-
-      return new LedgerTransaction(
-         record.id,
-         record.idempotency_key,
-         record.type as LedgerTxnType,
-         record.booking_id,
-         record.description,
-         record.metadata,
-         record.created_by,
-         record.created_at,
-         entries
-      )
+      return this.mapToTransactionEntity(record)
    }
 
-   async findTransactionByIdempotencyKey(key: string): Promise<LedgerTransaction | null> {
-      const record = await this.prisma.ledger_transactions.findUnique({
+   async findTransactionByIdempotencyKey(
+      key: string,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerTransaction | null> {
+      const db = tx ?? this.prisma
+      const record = await db.ledger_transactions.findUnique({
          where: { idempotency_key: key },
          include: { ledger_entries: true }
       })
       if (!record) return null
 
-      const entries = record.ledger_entries.map(
-         (e) =>
-            new LedgerEntry(
-               e.id,
-               e.transaction_id,
-               e.ledger_account_id,
-               e.amount_cents,
-               e.currency,
-               e.created_at
-            )
-      )
-
-      return new LedgerTransaction(
-         record.id,
-         record.idempotency_key,
-         record.type as LedgerTxnType,
-         record.booking_id,
-         record.description,
-         record.metadata,
-         record.created_by,
-         record.created_at,
-         entries
-      )
+      return this.mapToTransactionEntity(record)
    }
 
-   async saveTransaction(transaction: LedgerTransaction): Promise<LedgerTransaction> {
-      return this.prisma.$transaction(async (tx) => {
+   async saveTransaction(
+      transaction: LedgerTransaction,
+      tx?: Prisma.TransactionClient
+   ): Promise<LedgerTransaction> {
+      const run = async (db: Prisma.TransactionClient): Promise<LedgerTransaction> => {
          // Create the transaction
-         await tx.ledger_transactions.create({
+         await db.ledger_transactions.create({
             data: {
                id: transaction.id,
                idempotency_key: transaction.idempotencyKey,
-               type: transaction.type as ledger_txn_type,
+               type: transaction.type,
                booking_id: transaction.bookingId,
                description: transaction.description,
                metadata: transaction.metadata || undefined,
@@ -211,7 +223,7 @@ export class LedgerPrismaRepository implements LedgerRepository {
 
          // Create the entries
          for (const entry of transaction.entries) {
-            await tx.ledger_entries.create({
+            await db.ledger_entries.create({
                data: {
                   transaction_id: transaction.id,
                   ledger_account_id: entry.ledgerAccountId,
@@ -222,7 +234,15 @@ export class LedgerPrismaRepository implements LedgerRepository {
          }
 
          return transaction
-      })
+      }
+
+      // When called inside an outer interactive transaction, run inline so the
+      // caller's atomicity (e.g. cancellation override) is preserved. Prisma does
+      // not support nesting interactive transactions on the tx client.
+      if (tx) {
+         return run(tx)
+      }
+      return this.prisma.$transaction(run)
    }
 
    async findEntriesByAccountId(accountId: string): Promise<LedgerEntry[]> {
@@ -242,5 +262,153 @@ export class LedgerPrismaRepository implements LedgerRepository {
                e.created_at
             )
       )
+   }
+
+   async findAllTransactions(filter: FindAllTransactionsFilter): Promise<PaginatedTransactions> {
+      const { page = 1, limit = 20 } = filter
+      const skip = (page - 1) * limit
+
+      const where: Prisma.ledger_transactionsWhereInput = {}
+      if (filter.type) {
+         where.type = filter.type as ledger_txn_type
+      }
+      if (filter.bookingId) {
+         where.booking_id = filter.bookingId
+      }
+      if (filter.dateFrom || filter.dateTo) {
+         where.created_at = {}
+         if (filter.dateFrom) where.created_at.gte = filter.dateFrom
+         if (filter.dateTo) where.created_at.lte = filter.dateTo
+      }
+
+      const [total, records] = await this.prisma.$transaction([
+         this.prisma.ledger_transactions.count({ where }),
+         this.prisma.ledger_transactions.findMany({
+            where,
+            include: { ledger_entries: true },
+            orderBy: { created_at: 'desc' },
+            skip,
+            take: limit
+         })
+      ])
+
+      const data = records.map((record) => this.mapToTransactionEntity(record))
+
+      return { data, total, page, limit }
+   }
+
+   async findAllBalances(): Promise<BalanceWithAccount[]> {
+      const records = await this.prisma.ledger_balances.findMany({
+         orderBy: { updated_at: 'desc' },
+         include: {
+            ledger_accounts: {
+               include: {
+                  accounts: {
+                     include: { profiles: true }
+                  }
+               }
+            }
+         }
+      })
+
+      return records.map(
+         (record) =>
+            new BalanceWithAccount(
+               record.ledger_account_id,
+               record.ledger_accounts.owner_type,
+               record.ledger_accounts.owner_account_id,
+               record.ledger_accounts.accounts
+                  ? `${record.ledger_accounts.accounts.profiles?.first_name ?? ''} ${record.ledger_accounts.accounts.profiles?.last_name ?? ''}`.trim() ||
+                       null
+                  : null,
+               record.ledger_accounts.accounts?.email || null,
+               record.ledger_accounts.account_subtype,
+               record.ledger_accounts.currency,
+               record.balance_cents,
+               record.updated_at
+            )
+      )
+   }
+
+   async findAllPayouts(filter: FindAllPayoutsFilter): Promise<PaginatedPayouts> {
+      const { page = 1, limit = 20 } = filter
+      const skip = (page - 1) * limit
+
+      const where: Prisma.payoutsWhereInput = {}
+      if (filter.hostId) {
+         where.host_id = filter.hostId
+      }
+      if (filter.status) {
+         where.status = filter.status as payout_status
+      }
+      if (filter.dateFrom || filter.dateTo) {
+         where.scheduled_for = {}
+         if (filter.dateFrom) where.scheduled_for.gte = filter.dateFrom
+         if (filter.dateTo) where.scheduled_for.lte = filter.dateTo
+      }
+
+      const [total, records] = await this.prisma.$transaction([
+         this.prisma.payouts.count({ where }),
+         this.prisma.payouts.findMany({
+            where,
+            include: {
+               accounts: {
+                  include: { profiles: true }
+               }
+            },
+            orderBy: { created_at: 'desc' },
+            skip,
+            take: limit
+         })
+      ])
+
+      const data = records.map(
+         (record) =>
+            new Payout(
+               record.id,
+               record.host_id,
+               record.accounts
+                  ? `${record.accounts.profiles?.first_name ?? ''} ${record.accounts.profiles?.last_name ?? ''}`.trim() ||
+                       null
+                  : null,
+               record.accounts?.email || null,
+               record.ledger_transaction_id,
+               record.amount_cents,
+               record.currency,
+               record.status,
+               record.scheduled_for,
+               record.paid_at,
+               record.provider_payout_id,
+               record.created_at
+            )
+      )
+
+      return { data, total, page, limit }
+   }
+
+   async findPlatformConfig(): Promise<PlatformConfig | null> {
+      const record = await this.prisma.platform_config.findFirst({
+         orderBy: { updated_at: 'desc' }
+      })
+      if (!record) return null
+      return new PlatformConfig(record.fee_rules as Record<string, unknown>, record.updated_at)
+   }
+
+   async savePlatformConfig(feeRules: Record<string, unknown>): Promise<PlatformConfig> {
+      const now = new Date()
+      const existing = await this.prisma.platform_config.findFirst({
+         orderBy: { updated_at: 'desc' }
+      })
+
+      const record = existing
+         ? await this.prisma.platform_config.update({
+              where: { singleton: existing.singleton },
+              data: { fee_rules: feeRules as Prisma.InputJsonValue, updated_at: now }
+           })
+         : await this.prisma.platform_config.create({
+              data: { fee_rules: feeRules as Prisma.InputJsonValue, updated_at: now }
+           })
+
+      return new PlatformConfig(record.fee_rules as Record<string, unknown>, record.updated_at)
    }
 }

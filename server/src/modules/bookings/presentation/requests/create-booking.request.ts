@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger'
 import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator'
 
 export class CreateBookingRequest {
-   @ApiProperty({ description: 'Property ID to book', example: 'd0c2980e-3995-4fee-9b0e-bbadc3651c06' })
+   @ApiProperty({
+      description: 'Property ID to book',
+      example: 'd0c2980e-3995-4fee-9b0e-bbadc3651c06'
+   })
    @IsString()
    @IsNotEmpty()
    propertyId: string

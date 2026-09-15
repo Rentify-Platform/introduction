@@ -21,8 +21,5 @@ export abstract class AccountRepository {
    abstract save(account: Account): Promise<Account>
    abstract existsByEmail(email: string): Promise<boolean>
    abstract findAll(filter: FindAllAccountsFilter): Promise<PaginatedAccounts>
-   abstract updateStatus(
-      id: string,
-      status: 'active' | 'suspended' | 'banned'
-   ): Promise<Account>
+   abstract updateStatus(id: string, status: 'active' | 'suspended' | 'banned'): Promise<Account>
 }

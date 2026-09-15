@@ -7,6 +7,16 @@ import { getApiErrorMessage, getApiErrorStatus } from '@/lib/api/api-client'
 export function usePropertiesMutations() {
    const queryClient = useQueryClient()
 
+   const syncMutation = useMutation({
+      mutationFn: propertiesService.syncMeilisearch,
+      onSuccess: () => {
+         toast.success('Meilisearch index synchronized successfully!')
+      },
+      onError: (error) => {
+         toast.error(getApiErrorMessage(error, 'Synchronization failed. Please try again.'))
+      }
+   })
+
    const updateStatusMutation = useMutation({
       mutationFn: ({
          propertyId,
@@ -36,6 +46,8 @@ export function usePropertiesMutations() {
    })
 
    return {
+      syncMeilisearch: syncMutation.mutate,
+      isSyncing: syncMutation.isPending,
       updateStatus: updateStatusMutation.mutateAsync,
       isUpdatingStatus: updateStatusMutation.isPending
    }

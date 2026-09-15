@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common'
-import { AccountRepository, FindAllAccountsFilter, PaginatedAccounts } from '../../domain/repositories/auth.repository'
+import {
+   AccountRepository,
+   FindAllAccountsFilter,
+   PaginatedAccounts
+} from '../../domain/repositories/auth.repository'
 
 export class ListAccountsCommand {
    constructor(

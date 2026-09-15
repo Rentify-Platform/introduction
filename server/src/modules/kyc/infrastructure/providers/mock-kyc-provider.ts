@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common'
 import { randomUUID } from 'crypto'
-import { KycProviderPort } from '../../application/ports/kyc-provider.port'
+import { KycProviderPort, KycProviderRawResponse } from '../../application/ports/kyc-provider.port'
 import { KycCheckResult } from '../../domain/entities/kyc-check.entity'
 import { KycDocument } from '../../domain/entities/kyc-document.entity'
 
 @Injectable()
 export class MockKycProvider implements KycProviderPort {
-   async verifyIdentity(document: KycDocument): Promise<{
+   verifyIdentity(document: KycDocument): Promise<{
       result: KycCheckResult
       score: number
       providerReferenceId: string
-      rawResponse: any
+      rawResponse: KycProviderRawResponse
    }> {
       const url = document.fileUrlFront.toLowerCase()
 
@@ -22,7 +22,7 @@ export class MockKycProvider implements KycProviderPort {
          score = 25
       }
 
-      return {
+      return Promise.resolve({
          result,
          score,
          providerReferenceId: `provider-ref-${randomUUID()}`,
@@ -34,16 +34,18 @@ export class MockKycProvider implements KycProviderPort {
                documentAuthenticity: score > 30
             }
          }
-      }
+      })
    }
 
-   async runBackgroundCheck(accountId: string): Promise<{
+   runBackgroundCheck(accountId: string): Promise<{
       result: KycCheckResult
       score: number
       providerReferenceId: string
-      rawResponse: any
+      rawResponse: KycProviderRawResponse
    }> {
-      return {
+      void accountId
+
+      return Promise.resolve({
          result: 'pass',
          score: 100,
          providerReferenceId: `bg-check-${randomUUID()}`,
@@ -52,6 +54,6 @@ export class MockKycProvider implements KycProviderPort {
             criminalRecordFound: false,
             evaluatedAt: new Date().toISOString()
          }
-      }
+      })
    }
 }

@@ -23,6 +23,8 @@ export class RescreenKycUseCase {
    ) {}
 
    async execute(command: RescreenKycCommand): Promise<RescreenKycResult> {
+      void command
+
       // 1. Fetch expiring checks
       const expiringChecks = await this.kycRepository.findExpiringBackgroundChecks()
       if (expiringChecks.length === 0) {
@@ -52,6 +54,9 @@ export class RescreenKycUseCase {
             await this.kycRepository.saveCheck(newCheck)
 
             // Update profile status if background check fails
+            // Model A (account-level KYC): rescreen chạy theo scope account —
+            // kết quả pass/fail áp dụng cho danh tính cá nhân nên cập nhật cả
+            // guest và host profile qua updateProfileKycStatus.
             if (result.result === 'pass') {
                passedCount++
                await this.kycRepository.updateProfileKycStatus(check.accountId, 'verified')

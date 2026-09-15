@@ -65,7 +65,8 @@ export class LoginUseCase {
       const accessToken = await this.tokenService.generateToken({
          sub: account.id,
          email: account.email,
-         role: account.role
+         role: account.role,
+         tokenVersion: account.tokenVersion
       })
 
       // 5. Return result
