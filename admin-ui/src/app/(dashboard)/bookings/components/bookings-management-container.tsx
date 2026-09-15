@@ -10,17 +10,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCancellationsQuery } from '@/features/cancellations/hooks/use-cancellations'
 import { CancellationsTable } from '@/features/cancellations/components/cancellations-table'
 import { OverrideCancellationModal } from '@/features/cancellations/components/override-cancellation-modal'
+import { BookingCancelModal } from '@/features/bookings/components/booking-cancel-modal'
 import { Cancellation } from '@/features/cancellations/types'
 
 export function BookingsManagementContainer() {
    const [filter, setFilter] = React.useState<BookingsFilter>({ page: 1, limit: 20 })
-   const [cancellationPage, setCancellationPage] = React.useState(1)
+   const cancellationPage = 1
    const [selectedCancellation, setSelectedCancellation] = React.useState<Cancellation | null>(null)
+   const [cancelBookingId, setCancelBookingId] = React.useState<string | null>(null)
 
-   const { bookings, total, page, limit, isLoading, isFetching, error } =
-      useBookingsQueries(filter)
+   const { bookings, total, page, limit, isLoading, isFetching, error } = useBookingsQueries(filter)
    const { approve, decline, cancel, isPending } = useBookingsMutations()
-   
+
    const { data: cancellationsData } = useCancellationsQuery(cancellationPage, 20)
 
    return (
@@ -31,7 +32,7 @@ export function BookingsManagementContainer() {
                <TabsTrigger value="cancellations">Cancellations</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="all" className="space-y-4 mt-4">
+            <TabsContent value="all" className="mt-4 space-y-4">
                <BookingsFilterBar filter={filter} onChange={setFilter} />
 
                <BookingsTable
@@ -44,23 +45,34 @@ export function BookingsManagementContainer() {
                   onFilterChange={setFilter}
                   onApprove={(bookingId) => approve(bookingId)}
                   onDecline={(bookingId) => decline({ bookingId })}
-                  onCancel={(bookingId) => cancel({ bookingId })}
+                  onCancel={(bookingId) => setCancelBookingId(bookingId)}
                   isPending={isPending}
                />
             </TabsContent>
 
-            <TabsContent value="cancellations" className="space-y-4 mt-4">
-               <CancellationsTable 
+            <TabsContent value="cancellations" className="mt-4 space-y-4">
+               <CancellationsTable
                   cancellations={cancellationsData?.data || []}
                   onOverride={(c) => setSelectedCancellation(c)}
                />
             </TabsContent>
          </Tabs>
 
-         <OverrideCancellationModal 
+         <OverrideCancellationModal
             cancellation={selectedCancellation}
             isOpen={!!selectedCancellation}
             onClose={() => setSelectedCancellation(null)}
+         />
+
+         <BookingCancelModal
+            key={cancelBookingId ?? 'closed'}
+            bookingId={cancelBookingId}
+            isOpen={!!cancelBookingId}
+            isPending={isPending}
+            onClose={() => setCancelBookingId(null)}
+            onConfirm={(bookingId, reason) =>
+               cancel({ bookingId, reason }, { onSuccess: () => setCancelBookingId(null) })
+            }
          />
       </div>
    )

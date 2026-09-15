@@ -31,7 +31,7 @@ import { formatVND } from '@/lib/utils'
 export function OverviewDashboardContainer() {
    // Custom query and mutation hooks
    const { data: overviewData, isLoading: isLoadingOverview } = useDashboardOverviewQuery()
-   const { data: recentBookings } = useRecentBookingsQuery()
+   const { data: recentBookingsData } = useRecentBookingsQuery()
    const { syncMeilisearch, isSyncing } = usePropertiesMutations()
 
    const kpis = [
@@ -67,7 +67,7 @@ export function OverviewDashboardContainer() {
       }
    ]
 
-   const mockRecentBookings = recentBookings || []
+   const recentBookings = recentBookingsData ?? []
 
    return (
       <div className="animate-in fade-in space-y-8 duration-300">
@@ -197,7 +197,7 @@ export function OverviewDashboardContainer() {
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {mockRecentBookings.map((b) => (
+                        {recentBookings.map((b) => (
                            <TableRow key={b.id} className="border-zinc-100 hover:bg-zinc-50">
                               <TableCell className="font-medium text-zinc-900">{b.guest}</TableCell>
                               <TableCell className="text-zinc-700">{b.host}</TableCell>
